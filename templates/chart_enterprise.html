@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}企业数据可视化 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">数据可视化分析</h5>
+    <div class="btn-group btn-group-sm">
+        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-primary active">企业分布 (3图)</a>
+        <a href="{% url 'dashboard:chart_risk' %}" class="btn btn-outline-primary">风险分布 (3图)</a>
+        <a href="{% url 'dashboard:chart_compare' %}" class="btn btn-outline-primary">单企雷达对比 (1图)</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm p-3">
+            <h6 class="fw-bold small mb-2">1. 企业经营状态构成（点击扇区下钻列表）</h6>
+            <div id="chartStatus" style="height: 320px;"></div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm p-3">
+            <h6 class="fw-bold small mb-2">2. 企业类型 TOP 10 数量对比</h6>
+            <div id="chartType" style="height: 320px;"></div>
+        </div>
+    </div>
+    <div class="col-md-12">
+        <div class="card border-0 shadow-sm p-3">
+            <h6 class="fw-bold small mb-2">3. 登记机关分布集中度 TOP 10</h6>
+            <div id="chartAgency" style="height: 320px;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+const statusData = {{ status_json|safe }};
+const c1 = echarts.init(document.getElementById('chartStatus'));
+c1.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} 家 ({d}%)' },
+    legend: { bottom: 0 },
+    series: [{ type: 'pie', radius: ['45%', '70%'], data: statusData }]
+});
+c1.on('click', p => { if (p.data.code) window.location.href = `/enterprise/list/?status=${p.data.code}`; });
+
+const c2 = echarts.init(document.getElementById('chartType'));
+c2.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { bottom: 60, left: 50, right: 20, top: 20 },
+    xAxis: { type: 'category', data: {{ type_names_json|safe }}, axisLabel: { rotate: 25, fontSize: 11 } },
+    yAxis: { type: 'value' },
+    series: [{ type: 'bar', data: {{ type_vals_json|safe }}, itemStyle: { color: '#3b82f6' } }]
+});
+
+const c3 = echarts.init(document.getElementById('chartAgency'));
+c3.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 180, right: 40, top: 15, bottom: 25 },
+    xAxis: { type: 'value' },
+    yAxis: { type: 'category', data: {{ agency_names_json|safe }} },
+    series: [{ type: 'bar', data: {{ agency_vals_json|safe }}, itemStyle: { color: '#10b981' } }]
+});
+</script>
+{% endblock %}

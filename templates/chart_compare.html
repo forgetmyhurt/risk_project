@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}单企四维度雷达图对比 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">7. 企业四维度均衡度雷达图对比</h5>
+    <div class="btn-group btn-group-sm">
+        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-outline-primary">企业分布 (3图)</a>
+        <a href="{% url 'dashboard:chart_risk' %}" class="btn btn-outline-primary">风险分布 (3图)</a>
+        <a href="{% url 'dashboard:chart_compare' %}" class="btn btn-primary active">单企雷达对比 (1图)</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm p-4">
+    <form method="get" class="row g-2 align-items-center mb-3">
+        <div class="col-auto"><label class="small fw-semibold">选择对比企业：</label></div>
+        <div class="col-md-5">
+            <select name="id" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for s in samples %}
+                    <option value="{{ s.id }}" {% if ent and s.id == ent.id %}selected{% endif %}>
+                        {{ s.firm_name }}（综合得分：{{ s.score_total }}）
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+    <div id="chartRadar" style="height: 400px;"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+const radar = echarts.init(document.getElementById('chartRadar'));
+radar.setOption({
+    tooltip: {},
+    legend: { bottom: 0, data: ['当前企业得分', '同类型企业均值'] },
+    radar: {
+        indicator: [
+            { name: '财务维度 (满分25)', max: 25 },
+            { name: '经营维度 (满分25)', max: 25 },
+            { name: '合规维度 (满分25)', max: 25 },
+            { name: '质量维度 (满分25)', max: 25 }
+        ]
+    },
+    series: [{
+        type: 'radar',
+        data: [
+            { value: {{ ent_scores_json|safe }}, name: '当前企业得分', areaStyle: { opacity: 0.2 } },
+            { value: {{ avg_scores_json|safe }}, name: '同类型企业均值' }
+        ]
+    }]
+});
+</script>
+{% endblock %}

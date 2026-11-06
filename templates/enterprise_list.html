@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}企业信息列表 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">企业信息</h5>
+    <span class="text-muted small">首页 / 企业 / 企业信息</span>
+</div>
+
+<!-- 筛选区 -->
+<div class="card border-0 shadow-sm p-3 mb-3">
+    <form method="get" class="row g-3 align-items-center">
+        <div class="col-md-3">
+            <input type="text" name="keyword" value="{{ keyword }}" class="form-control form-control-sm" placeholder="企业名称 / 统一社会信用代码">
+        </div>
+        <div class="col-md-2">
+            <select name="category" class="form-select form-select-sm">
+                <option value="">企业类别：全部</option>
+                <option value="E" {% if category == 'E' %}selected{% endif %}>企业</option>
+                <option value="P" {% if category == 'P' %}selected{% endif %}>个体户</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="status" class="form-select form-select-sm">
+                <option value="">经营状态：全部</option>
+                <option value="1" {% if status == '1' %}selected{% endif %}>在营</option>
+                <option value="2" {% if status == '2' %}selected{% endif %}>注销</option>
+                <option value="3" {% if status == '3' %}selected{% endif %}>吊销</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="level" class="form-select form-select-sm">
+                <option value="">风险等级：全部</option>
+                <option value="L" {% if level == 'L' %}selected{% endif %}>低风险</option>
+                <option value="M" {% if level == 'M' %}selected{% endif %}>中风险</option>
+                <option value="H" {% if level == 'H' %}selected{% endif %}>高风险</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary px-3">查询</button>
+            <a href="{% url 'enterprise:list' %}" class="btn btn-sm btn-outline-secondary px-3">重置</a>
+        </div>
+    </form>
+</div>
+
+<!-- 列表与分页 -->
+<div class="card border-0 shadow-sm p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-2">
+            <thead class="table-light">
+                <tr>
+                    <th>企业名称</th><th>统一社会信用代码</th><th>法定代表人</th><th>企业类别</th>
+                    <th>经营状态</th><th>成立日期</th><th>注册资本(万元)</th><th>省市区</th><th>风险等级</th><th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for e in page_obj %}
+                <tr>
+                    <td class="fw-semibold">{{ e.firm_name }}</td>
+                    <td>{{ e.usc_code|default:"-" }}</td>
+                    <td>{{ e.legal_rep|default:"-" }}</td>
+                    <td><span class="badge bg-info-subtle text-primary">{{ e.get_firm_category_display }}</span></td>
+                    <td>
+                        {% if e.ope_status == '1' %}<span class="badge bg-success-subtle text-success">在营</span>
+                        {% elif e.ope_status == '2' %}<span class="badge bg-secondary-subtle text-secondary">注销</span>
+                        {% else %}<span class="badge bg-danger-subtle text-danger">吊销</span>{% endif %}
+                    </td>
+                    <td>{{ e.est_date|date:"Y-m-d"|default:"-" }}</td>
+                    <td>{{ e.reg_cap }}</td>
+                    <td>{{ e.province }}{{ e.city }}{{ e.district }}</td>
+                    <td>
+                        {% if e.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
+                        {% elif e.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
+                        {% else %}<span class="badge badge-high">高风险</span>{% endif %}
+                    </td>
+                    <td><a href="{% url 'enterprise:detail' e.id %}" class="text-decoration-none">详情</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="10" class="text-center text-muted py-4">暂无数据</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center pt-2">
+        <span class="small text-muted">共 {{ page_obj.paginator.count }} 条，每页 10 条（第 {{ page_obj.number }}/{{ page_obj.paginator.num_pages }} 页）</span>
+        <nav>
+            <ul class="pagination pagination-sm m-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?keyword={{ keyword }}&category={{ category }}&status={{ status }}&level={{ level }}&page={{ page_obj.previous_page_number }}">上一页</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?keyword={{ keyword }}&category={{ category }}&status={{ status }}&level={{ level }}&page={{ page_obj.next_page_number }}">下一页</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}

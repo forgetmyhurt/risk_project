@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}NLP 文本风险识别 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">模型部署展示（轻量化 NLP 文本风险识别）</h5>
+    <div class="btn-group btn-group-sm">
+        <a href="{% url 'ai:predict_page' %}" class="btn btn-outline-primary">大模型风险预估</a>
+        <a href="{% url 'ai:model_show' %}" class="btn btn-primary active">NLP 文本风险识别</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="small fw-semibold">输入待识别企业舆情 / 裁判文书摘要（1~2000 字）：</label>
+        <span id="healthBadge" class="badge bg-secondary">正在探活 NLP 服务...</span>
+    </div>
+    <textarea id="nlpText" rows="4" class="form-control form-control-sm mb-3">经查，该公司因合同违约及欠税问题被立案调查，名下部分银行账户已被冻结，今年新增2起被执行记录，受到市场监管部门行政处罚罚款。</textarea>
+    <div class="d-flex gap-2">
+        <select id="nlpModel" class="form-select form-select-sm" style="width: 180px;">
+            <option value="general">general（通用词库）</option>
+            <option value="finance">finance（财务加权）</option>
+            <option value="compliance">compliance（合规加权）</option>
+        </select>
+        <button id="btnAnalyze" class="btn btn-sm btn-primary px-4">开始识别</button>
+    </div>
+</div>
+
+<div id="nlpResult" class="card border-0 shadow-sm p-4 d-none">
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+        <div>识别风险等级：<span id="resLevel" class="badge"></span> <strong id="resScore" class="ms-2"></strong></div>
+        <span id="resTime" class="small text-muted"></span>
+    </div>
+    <div class="row g-4">
+        <div class="col-md-5"><div id="scoreBar" style="height: 220px;"></div></div>
+        <div class="col-md-7 small">
+            <div class="fw-bold mb-2">命中风险词标签：</div>
+            <div id="hitTags" class="mb-3"></div>
+            <div class="fw-bold mb-2">原文风险词高亮：</div>
+            <div id="highlightBox" class="p-3 bg-light rounded" style="line-height: 1.8;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+async function checkHealth() {
+    const badge = document.getElementById('healthBadge');
+    try {
+        const r = await fetch("{% url 'ai:model_health' %}");
+        const d = await r.json();
+        if (d.status === 'ok') {
+            badge.className = 'badge bg-success';
+            badge.innerText = `NLP 服务在线 (${d.version || 'v1.0'})`;
+            return true;
+        }
+    } catch (e) {}
+    badge.className = 'badge bg-danger';
+    badge.innerText = '文本识别服务暂不可用';
+    document.getElementById('btnAnalyze').disabled = true;
+    return false;
+}
+checkHealth();
+
+document.getElementById('btnAnalyze').addEventListener('click', async () => {
+    const text = document.getElementById('nlpText').value.trim();
+    const model = document.getElementById('nlpModel').value;
+    if (!text) { alert('请输入待分析文本'); return; }
+
+    const formData = new FormData();
+    formData.append('text', text);
+    formData.append('model', model);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    const r = await fetch("{% url 'ai:model_analyze' %}", { method: 'POST', body: formData });
+    const res = await r.json();
+    if (res.code !== 0) { alert(res.message); return; }
+
+    const d = res.data;
+    document.getElementById('nlpResult').classList.remove('d-none');
+    const lvlEl = document.getElementById('resLevel');
+    lvlEl.innerText = d.level + '风险';
+    lvlEl.className = 'badge ' + (d.level === '低' ? 'badge-low' : (d.level === '中' ? 'badge-mid' : 'badge-high'));
+    document.getElementById('resScore').innerText = `综合得分：${d.total_score} 分`;
+    document.getElementById('resTime').innerText = `耗时：${d.elapsed_ms} ms` + (d.truncated ? '（超长已截断至2000字）' : '');
+
+    // 命中词与高亮
+    document.getElementById('hitTags').innerHTML = d.hits.length
+        ? d.hits.map(h => `<span class="badge bg-danger-subtle text-danger me-2 mb-1">${h.word} (${h.category}×${h.count})</span>`).join('')
+        : '<span class="text-muted">未命中风险敏感词</span>';
+
+    let hl = text.slice(0, 2000);
+    d.hits.forEach(h => {
+        hl = hl.replaceAll(h.word, `<mark class="bg-warning px-1 rounded fw-bold">${h.word}</mark>`);
+    });
+    document.getElementById('highlightBox').innerHTML = hl;
+
+    const chart = echarts.init(document.getElementById('scoreBar'));
+    chart.setOption({
+        grid: { left: 50, right: 20, top: 10, bottom: 25 },
+        xAxis: { type: 'value', max: 25 },
+        yAxis: { type: 'category', data: Object.keys(d.scores) },
+        series: [{ type: 'bar', data: Object.values(d.scores), itemStyle: { color: '#3b82f6' } }]
+    });
+});
+</script>
+{% endblock %}

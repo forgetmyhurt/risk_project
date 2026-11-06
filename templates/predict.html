@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}AI 风险预估 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">AI 风险预估（大模型辅助分析）</h5>
+    <div class="btn-group btn-group-sm">
+        <a href="{% url 'ai:predict_page' %}" class="btn btn-primary active">大模型风险预估</a>
+        <a href="{% url 'ai:model_show' %}" class="btn btn-outline-primary">NLP 文本风险识别</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm p-4">
+            <form id="predictForm">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">企业名称 *</label>
+                    <input type="text" name="enterprise_name" class="form-control form-control-sm" value="重庆示例科技有限公司" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">所属行业</label>
+                    <input type="text" name="industry" class="form-control form-control-sm" value="软件和信息技术服务业">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">企业规模</label>
+                    <select name="scale" class="form-select form-select-sm">
+                        <option value="large">大型企业</option>
+                        <option value="medium" selected>中型企业</option>
+                        <option value="small">小型企业</option>
+                        <option value="micro">微型企业</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">分析模型侧重（FR-04-02）</label>
+                    <select name="model" class="form-select form-select-sm">
+                        <option value="general">通用风控模型</option>
+                        <option value="finance">财务审慎模型</option>
+                        <option value="compliance">司法合规模型</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">经营与风险近况描述</label>
+                    <textarea name="description" rows="4" class="form-control form-control-sm">该企业近期主营业务稳定，但存在1起买卖合同违约诉讼及少量逾期账款。</textarea>
+                </div>
+                <button type="submit" id="btnSubmit" class="btn btn-primary btn-sm w-100">发起 AI 风险预估</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm p-4 h-100" id="resultBox">
+            <h6 class="fw-bold border-bottom pb-2">预估结论与防控建议 <span class="badge bg-secondary ms-2 small">仅供参考，不改写规则评分</span></h6>
+            <div id="resultContent" class="text-muted small py-4 text-center">请在左侧填写企业信息并点击“发起 AI 风险预估”</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('predictForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmit');
+    const box = document.getElementById('resultContent');
+    btn.disabled = true;
+    box.innerHTML = '正在调用分析引擎（超时阈值 5 秒）...';
+
+    const formData = new FormData(this);
+    const resp = await fetch("{% url 'ai:predict_api' %}", { method: 'POST', body: formData });
+    const res = await resp.json();
+    btn.disabled = false;
+
+    if (res.code !== 0) {
+        box.innerHTML = `<div class="alert alert-danger">${res.message}</div>`;
+        return;
+    }
+    const d = res.data;
+    const dims = d.dimensions.map(x => `<li class="mb-1"><strong>${x.name}：</strong>${x.analysis}</li>`).join('');
+    const sugs = d.suggestions.map(x => `<li>${x}</li>`).join('');
+    const fbAlert = d.fallback ? `<div class="alert alert-warning py-1 small mb-2">提示：${d.fallback_reason}</div>` : '';
+    box.className = "small text-start";
+    box.innerHTML = `
+        ${fbAlert}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>AI 参考得分：<strong class="fs-4 text-primary">${d.total_score}</strong> 分（${d.risk_level}）</div>
+            <span class="text-muted">耗时：${d.elapsed_ms} ms</span>
+        </div>
+        <p class="mb-3">${d.summary}</p>
+        <h6 class="fw-bold small">四维度分析：</h6><ul>${dims}</ul>
+        <h6 class="fw-bold small">风控建议：</h6><ul class="mb-0">${sugs}</ul>
+    `;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ ent.firm_name }} - 企业详情{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">{{ ent.firm_name }}</h5>
+    <div class="d-flex gap-2">
+        <form method="post" action="{% url 'risk:score_calc' ent.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-primary">重新计算评分并生成报告</button>
+        </form>
+        {% if ind %}
+            <a href="{% url 'risk:report' ind.id %}" class="btn btn-sm btn-outline-success">查看风险报告</a>
+        {% endif %}
+        <a href="{% url 'enterprise:list' %}" class="btn btn-sm btn-outline-secondary">返回列表</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 1. 工商信息 -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <h6 class="fw-bold border-bottom pb-2 mb-3">工商注册信息</h6>
+            <div class="row g-2 small">
+                <div class="col-6"><span class="text-muted">统一社会信用代码：</span>{{ ent.usc_code|default:"-" }}</div>
+                <div class="col-6"><span class="text-muted">法定代表人：</span>{{ ent.legal_rep|default:"-" }}</div>
+                <div class="col-6"><span class="text-muted">企业类别：</span>{{ ent.get_firm_category_display }}</div>
+                <div class="col-6"><span class="text-muted">企业类型：</span>{{ ent.firm_type|default:"-" }}</div>
+                <div class="col-6"><span class="text-muted">经营状态：</span>{{ ent.get_ope_status_display }}</div>
+                <div class="col-6"><span class="text-muted">成立日期：</span>{{ ent.est_date|date:"Y-m-d"|default:"-" }}</div>
+                <div class="col-6"><span class="text-muted">注册资本：</span>{{ ent.reg_cap }} 万元</div>
+                <div class="col-6"><span class="text-muted">登记机关：</span>{{ ent.reg_agency|default:"-" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 风险概览 -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <h6 class="fw-bold border-bottom pb-2 mb-3">风险评估概览</h6>
+            {% if ind %}
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <span class="text-muted small">综合风险得分：</span>
+                        <span class="fs-4 fw-bold ms-1">{{ ind.total_risk_score }}</span>
+                    </div>
+                    <div>
+                        {% if ind.risk_level == 'L' %}<span class="badge badge-low fs-6">低风险</span>
+                        {% elif ind.risk_level == 'M' %}<span class="badge badge-mid fs-6">中风险</span>
+                        {% else %}<span class="badge badge-high fs-6">高风险</span>{% endif %}
+                    </div>
+                </div>
+                <div class="row g-2 small">
+                    <div class="col-6">财务维度得分：<strong>{{ ind.score_fin }}</strong> / 25</div>
+                    <div class="col-6">经营维度得分：<strong>{{ ind.score_ope }}</strong> / 25</div>
+                    <div class="col-6">合规维度得分：<strong>{{ ind.score_com }}</strong> / 25</div>
+                    <div class="col-6">质量维度得分：<strong>{{ ind.score_qua }}</strong> / 25</div>
+                    <div class="col-12 text-muted mt-2">最近评分时间：{{ ind.scored_at|date:"Y-m-d H:i" }}（批次 {{ ind.batch_no }}）</div>
+                </div>
+            {% else %}
+                <p class="text-muted small">暂无风险评分记录</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 3. 经营信息 -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <h6 class="fw-bold border-bottom pb-2 mb-3">行业与经营范围</h6>
+            <p class="small mb-2"><span class="text-muted">所属行业：</span>{{ ent.ind_econ_name|default:"-" }}</p>
+            <p class="small mb-0"><span class="text-muted">经营范围：</span>{{ ent.business_scope|default:"-" }}</p>
+        </div>
+    </div>
+
+    <!-- 4. 地址与地域 + 扩展宽表字段 -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm p-3 h-100">
+            <h6 class="fw-bold border-bottom pb-2 mb-3">地址与地域及扩展档案</h6>
+            <p class="small mb-2"><span class="text-muted">行政区划：</span>{{ ent.province }} {{ ent.city }} {{ ent.district }}</p>
+            {% if ent.extra %}
+            <details class="small">
+                <summary class="text-primary" style="cursor:pointer;">展开查看其余宽表工商字段</summary>
+                <div class="row g-1 mt-2">
+                    {% for k, v in ent.extra.items %}
+                        <div class="col-6 text-truncate" title="{{ v }}"><span class="text-muted">{{ k }}：</span>{{ v }}</div>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

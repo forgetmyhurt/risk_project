@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}风险指标列表 - 企业风险评估系统{% endblock %}
+{% block content %}
+<h5 class="fw-bold mb-3">风险指标列表</h5>
+<div class="card border-0 shadow-sm p-3 mb-3">
+    <form method="get" class="row g-3 align-items-center">
+        <div class="col-md-3">
+            <input type="text" name="keyword" value="{{ keyword }}" class="form-control form-control-sm" placeholder="企业名称 / 信用代码">
+        </div>
+        <div class="col-md-2">
+            <select name="level" class="form-select form-select-sm">
+                <option value="">风险等级：全部</option>
+                <option value="L" {% if level == 'L' %}selected{% endif %}>低风险</option>
+                <option value="M" {% if level == 'M' %}selected{% endif %}>中风险</option>
+                <option value="H" {% if level == 'H' %}selected{% endif %}>高风险</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="order" class="form-select form-select-sm">
+                <option value="-total_risk_score" {% if order == '-total_risk_score' %}selected{% endif %}>按综合得分倒序（高分在前）</option>
+                <option value="total_risk_score" {% if order == 'total_risk_score' %}selected{% endif %}>按综合得分升序（高风险在前）</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary px-3">筛选</button>
+            <a href="{% url 'risk:list' %}" class="btn btn-sm btn-outline-secondary px-3">重置</a>
+        </div>
+    </form>
+</div>
+
+<div class="card border-0 shadow-sm p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-2 small">
+            <thead class="table-light">
+                <tr>
+                    <th>企业名称</th><th>综合得分</th><th>风险等级</th>
+                    <th>财务得分</th><th>经营得分</th><th>合规得分</th><th>质量得分</th>
+                    <th>被裁判(1/2/3年)</th><th>立案(1/2/3年)</th><th>被立案(1/2/3年)</th><th>被执行(1/2/3年)</th><th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in page_obj %}
+                <tr>
+                    <td class="fw-semibold">{{ r.name }}</td>
+                    <td class="fw-bold">{{ r.total_risk_score }}</td>
+                    <td>
+                        {% if r.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
+                        {% elif r.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
+                        {% else %}<span class="badge badge-high">高风险</span>{% endif %}
+                    </td>
+                    <td>{{ r.score_fin }}</td><td>{{ r.score_ope }}</td><td>{{ r.score_com }}</td><td>{{ r.score_qua }}</td>
+                    <td>{{ r.cai_1 }}/{{ r.cai_2 }}/{{ r.cai_3 }}</td>
+                    <td>{{ r.s_an_1 }}/{{ r.s_an_2 }}/{{ r.s_an_3 }}</td>
+                    <td>{{ r.li_an_1 }}/{{ r.li_an_2 }}/{{ r.li_an_3 }}</td>
+                    <td>{{ r.zhi_1 }}/{{ r.zhi_2 }}/{{ r.zhi_3 }}</td>
+                    <td>
+                        <a href="{% url 'risk:detail' r.id %}" class="text-decoration-none me-2">详情</a>
+                        <a href="{% url 'risk:report' r.id %}" class="text-decoration-none text-success">报告</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="12" class="text-center text-muted py-4">暂无数据</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center pt-2">
+        <span class="small text-muted">共 {{ page_obj.paginator.count }} 条（第 {{ page_obj.number }}/{{ page_obj.paginator.num_pages }} 页）</span>
+        <nav>
+            <ul class="pagination pagination-sm m-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?keyword={{ keyword }}&level={{ level }}&order={{ order }}&page={{ page_obj.previous_page_number }}">上一页</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?keyword={{ keyword }}&level={{ level }}&order={{ order }}&page={{ page_obj.next_page_number }}">下一页</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}

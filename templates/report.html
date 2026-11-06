@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}企业风险评估报告 - {{ ent.firm_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">企业风险评估报告 <span class="text-muted small">({{ report_no }})</span></h5>
+    <div class="d-flex gap-2">
+        <a href="{% url 'risk:report_pdf' ind.id %}" class="btn btn-sm btn-primary">导出 PDF 报告</a>
+        <a href="{% url 'enterprise:detail' ent.id %}" class="btn btn-sm btn-outline-secondary">返回企业详情</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm p-4 mb-3">
+    <h6 class="fw-bold border-bottom pb-2 mb-3">1. 评估结论</h6>
+    <div class="d-flex align-items-center gap-4 mb-2">
+        <div>企业名称：<strong>{{ ent.firm_name }}</strong></div>
+        <div>综合得分：<strong class="fs-5">{{ ind.total_risk_score }}</strong> 分</div>
+        <div>风险等级：
+            {% if ind.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
+            {% elif ind.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
+            {% else %}<span class="badge badge-high">高风险</span>{% endif %}
+        </div>
+    </div>
+    <p class="small text-secondary mb-0">{{ conclusion }}</p>
+</div>
+
+<div class="card border-0 shadow-sm p-4 mb-3">
+    <h6 class="fw-bold border-bottom pb-2 mb-3">2. 四维度风险分析</h6>
+    <div class="row g-3">
+        {% for d in dimensions %}
+        <div class="col-md-6">
+            <div class="border rounded p-3 h-100 small">
+                <div class="fw-bold mb-1">{{ d.name }}（{{ d.score|floatformat:2 }} / 25.00）</div>
+                <div class="text-muted mb-1">{{ d.items }}</div>
+                <div>{{ d.desc }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm p-4 mb-3">
+    <h6 class="fw-bold border-bottom pb-2 mb-3">3. 12 项原始风险指标明细</h6>
+    <table class="table table-sm table-bordered small mb-0">
+        <thead class="table-light">
+            <tr><th>指标类型</th><th>近 1 年</th><th>近 2 年</th><th>近 3 年</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>被裁判次数（cai）</td><td>{{ ind.cai_1 }}</td><td>{{ ind.cai_2 }}</td><td>{{ ind.cai_3 }}</td></tr>
+            <tr><td>立案数（s_an）</td><td>{{ ind.s_an_1 }}</td><td>{{ ind.s_an_2 }}</td><td>{{ ind.s_an_3 }}</td></tr>
+            <tr><td>被立案次数（li_an）</td><td>{{ ind.li_an_1 }}</td><td>{{ ind.li_an_2 }}</td><td>{{ ind.li_an_3 }}</td></tr>
+            <tr><td>被执行次数（zhi）</td><td>{{ ind.zhi_1 }}</td><td>{{ ind.zhi_2 }}</td><td>{{ ind.zhi_3 }}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card border-0 shadow-sm p-4">
+    <h6 class="fw-bold border-bottom pb-2 mb-3">4. 企业工商档案信息</h6>
+    <div class="row g-2 small">
+        <div class="col-md-4"><span class="text-muted">统一社会信用代码：</span>{{ ent.usc_code|default:"-" }}</div>
+        <div class="col-md-4"><span class="text-muted">法定代表人：</span>{{ ent.legal_rep|default:"-" }}</div>
+        <div class="col-md-4"><span class="text-muted">经营状态：</span>{{ ent.get_ope_status_display }}</div>
+        <div class="col-md-4"><span class="text-muted">注册资本：</span>{{ ent.reg_cap }} 万元</div>
+        <div class="col-md-4"><span class="text-muted">成立日期：</span>{{ ent.est_date|date:"Y-m-d"|default:"-" }}</div>
+        <div class="col-md-4"><span class="text-muted">所属地区：</span>{{ ent.province }}{{ ent.city }}{{ ent.district }}</div>
+        <div class="col-md-12"><span class="text-muted">经营范围：</span>{{ ent.business_scope|default:"-" }}</div>
+    </div>
+</div>
+{% endblock %}

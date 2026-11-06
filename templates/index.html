@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h5 class="fw-bold mb-4">首页概览</h5>
+<div class="row g-4 mb-4">
+    <div class="col-md-3"><div class="card p-3 border-0 shadow-sm"><div class="text-muted small">入库企业总数</div><h3 class="fw-bold mt-1">{{ total }}</h3></div></div>
+    <div class="col-md-3"><div class="card p-3 border-0 shadow-sm"><div class="text-muted small">低风险企业 (≥80分)</div><h3 class="fw-bold mt-1" style="color:#1E7B45;">{{ low_cnt }}</h3></div></div>
+    <div class="col-md-3"><div class="card p-3 border-0 shadow-sm"><div class="text-muted small">中风险企业 (50~79分)</div><h3 class="fw-bold mt-1" style="color:#B7791F;">{{ mid_cnt }}</h3></div></div>
+    <div class="col-md-3"><div class="card p-3 border-0 shadow-sm"><div class="text-muted small">高风险企业 (<50分)</div><h3 class="fw-bold mt-1" style="color:#C0392B;">{{ high_cnt }}</h3></div></div>
+</div>
+
+<div class="card border-0 shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold m-0">重点关注企业 TOP 10（按综合得分升序）</h6>
+        <a href="{% url 'enterprise:list' %}" class="btn btn-sm btn-outline-primary">查看全部企业</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>企业名称</th><th>统一社会信用代码</th><th>法定代表人</th><th>经营状态</th><th>综合得分</th><th>风险等级</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+            {% for e in top_risks %}
+                <tr>
+                    <td class="fw-semibold">{{ e.firm_name }}</td>
+                    <td>{{ e.usc_code|default:"-" }}</td>
+                    <td>{{ e.legal_rep|default:"-" }}</td>
+                    <td>{{ e.get_ope_status_display }}</td>
+                    <td>{{ e.score_total }}</td>
+                    <td>
+                        {% if e.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
+                        {% elif e.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
+                        {% else %}<span class="badge badge-high">高风险</span>{% endif %}
+                    </td>
+                    <td><a href="{% url 'enterprise:detail' e.id %}" class="btn btn-sm btn-link text-decoration-none">详情</a></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

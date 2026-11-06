@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card border-0 shadow-sm p-5 text-center my-5">
+    <h1 class="display-4 text-danger fw-bold">403</h1>
+    <p class="lead text-muted mb-4">{{ message|default:"抱歉，您没有权限访问该页面。" }}</p>
+    <div><a href="/" class="btn btn-primary px-4">返回首页</a></div>
+</div>
+{% endblock %}
