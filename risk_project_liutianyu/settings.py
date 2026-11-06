@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,7 +25,6 @@ SECRET_KEY = "django-insecure-22vdal8xvek!o%-a-v8xqejqrv#*w-+_0z!5_wc228!0a4tiga
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -80,20 +79,31 @@ WSGI_APPLICATION = "risk_project_liutianyu.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
+
+# 读取环境变量或降级为本地默认
+DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
+DB_NAME = os.environ.get("DB_NAME", "risk_assessment")
+DB_USER = os.environ.get("DB_USER", "root")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "123456")
+DB_PORT = os.environ.get("DB_PORT", "3306")
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'risk_assessment',       # 数据库名
-        'USER': 'root',               # MySQL 用户名
-        'PASSWORD': '123456',      #  root 密码
-        'HOST': '127.0.0.1',          # 本地数据库
-        'PORT': '3306',               # MySQL 默认端口
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'connect_timeout': 5,
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "connect_timeout": 5,
         },
     }
 }
+
+ALLOWED_HOSTS = ["*"]
 
 
 # Password validation
