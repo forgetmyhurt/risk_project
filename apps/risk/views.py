@@ -10,6 +10,7 @@ from apps.enterprise.models import Enterprise
 from apps.risk.models import RiskIndicator
 from services.report_build import build_report_context, generate_report_pdf
 from services.risk_calc import calc_risk_score
+from apps.accounts.models import UserActivityLog, log_activity
 
 @login_required_custom
 def risk_list(request):
@@ -90,6 +91,8 @@ def score_calc(request, pk: int):
                 "algo_version": ind.algo_version,
             }
         })
+    log_activity(request, UserActivityLog.ActionType.SCORE,
+                 f"发起风险重算：{ent.firm_name}（得分 {ind.total_risk_score}）")
     return redirect("risk:report", pk=ind.id)
 
 @login_required_custom
@@ -103,6 +106,7 @@ def risk_report(request, pk: int):
 def report_pdf(request, pk: int):
     """FR-03-04: 导出 PDF 风险报告"""
     ind = get_object_or_404(RiskIndicator.objects.select_related("enterprise"), pk=pk)
+
     try:
         pdf_bytes, encoded_name = generate_report_pdf(ind)
     except Exception as e:
@@ -110,4 +114,6 @@ def report_pdf(request, pk: int):
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_name}"
+    log_activity(request, UserActivityLog.ActionType.EXPORT, f"导出 PDF 风险报告：{ind.enterprise.firm_name}")
+
     return response

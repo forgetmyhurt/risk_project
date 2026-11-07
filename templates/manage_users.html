@@ -1,51 +1,119 @@
 {% extends "base.html" %}
-{% block title %}用户管理 - 企业风险评估系统{% endblock %}
+{% block title %}账号与权限管理 - 企业风险评估系统{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold m-0">用户与角色权限管理</h5>
+    <h5 class="fw-bold m-0">账号管理与权限授予</h5>
     <div class="btn-group btn-group-sm">
-        <a href="{% url 'manager:dashboard' %}" class="btn btn-outline-primary">管理概览</a>
-        <a href="{% url 'manager:users' %}" class="btn btn-primary active">用户与权限管理</a>
+        <a href="{% url 'manager:dashboard' %}" class="btn btn-outline-primary">管理概览与日志</a>
+        <a href="{% url 'manager:users' %}" class="btn btn-primary active">账号与权限管理</a>
         <a href="{% url 'manager:threshold' %}" class="btn btn-outline-primary">风险阈值配置</a>
     </div>
 </div>
-<div class="card border-0 shadow-sm p-3">
-    <table class="table table-hover align-middle small mb-0">
-        <thead class="table-light">
-            <tr><th>ID</th><th>用户名</th><th>系统角色</th><th>状态</th><th>最后登录</th><th>操作</th></tr>
-        </thead>
-        <tbody>
-        {% for u in users %}
-            <tr>
-                <td>{{ u.id }}</td>
-                <td class="fw-semibold">{{ u.username }}</td>
-                <td>
-                    {% if u.is_superuser %}<span class="badge bg-danger">超级用户</span>
-                    {% elif u.profile.role == 'admin' or u.is_staff %}<span class="badge bg-warning text-dark">管理员</span>
-                    {% else %}<span class="badge bg-secondary">普通用户</span>{% endif %}
-                </td>
-                <td>{% if u.is_active %}<span class="text-success">启用</span>{% else %}<span class="text-danger">禁用</span>{% endif %}</td>
-                <td>{{ u.last_login|date:"Y-m-d H:i"|default:"-" }}</td>
-                <td>
-                    {% if not u.is_superuser %}
-                    <button class="btn btn-sm btn-outline-secondary py-0" onclick="updateUser({{ u.id }}, 'toggle_active')">启用/禁用</button>
-                    {% endif %}
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+
+<div class="row g-4">
+    <!-- 左栏：创建新用户 -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-4">
+            <h6 class="fw-bold border-bottom pb-2 mb-3">➕ 创建新用户账号</h6>
+            <form id="createUserForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <div class="mb-2">
+                    <label class="form-label small">用户名 *</label>
+                    <input type="text" name="username" class="form-control form-control-sm" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">初始密码 *（至少 6 位）</label>
+                    <input type="password" name="password" class="form-control form-control-sm" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">授予角色权限</label>
+                    <select name="role" class="form-select form-select-sm">
+                        <option value="normal">普通用户（尽调查询/导出）</option>
+                        <option value="admin">管理员（含后台管理权限）</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">所属部门</label>
+                    <input type="text" name="department" class="form-control form-control-sm" placeholder="如：风控合规部">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">联系电话</label>
+                    <input type="text" name="phone" class="form-control form-control-sm">
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary w-100">立即创建账号</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 右栏：账号列表、赋权与删除 -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm p-4">
+            <h6 class="fw-bold border-bottom pb-2 mb-3">系统账号列表</h6>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small mb-0">
+                    <thead class="table-light">
+                        <tr><th>ID</th><th>用户名</th><th>部门/电话</th><th>角色权限</th><th>状态</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for u in users %}
+                        <tr>
+                            <td>{{ u.id }}</td>
+                            <td class="fw-semibold">{{ u.username }}</td>
+                            <td>{{ u.profile.department|default:"-" }}<br><span class="text-muted">{{ u.profile.phone|default:"" }}</span></td>
+                            <td>
+                                {% if u.is_superuser %}<span class="badge bg-danger">超级用户</span>
+                                {% elif u.profile.role == 'admin' or u.is_staff %}<span class="badge bg-warning text-dark">管理员</span>
+                                {% else %}<span class="badge bg-secondary">普通用户</span>{% endif %}
+                            </td>
+                            <td>{% if u.is_active %}<span class="text-success fw-semibold">启用</span>{% else %}<span class="text-danger fw-semibold">禁用</span>{% endif %}</td>
+                            <td>
+                                {% if not u.is_superuser and u != request.user %}
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <button class="btn btn-sm btn-outline-primary py-0"
+                                            onclick="userAct({{ u.id }}, 'set_role', '{% if u.profile.role == 'admin' %}normal{% else %}admin{% endif %}')">
+                                        {% if u.profile.role == 'admin' %}设为普通{% else %}授管理员{% endif %}
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary py-0" onclick="userAct({{ u.id }}, 'toggle_active')">
+                                        {% if u.is_active %}禁用{% else %}启用{% endif %}
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger py-0" onclick="userAct({{ u.id }}, 'delete')">删除</button>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">当前/受保护</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
-async function updateUser(uid, action) {
+document.getElementById('createUserForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const r = await fetch("{% url 'manager:users' %}", { method: 'POST', body: new FormData(this) });
+    const d = await r.json();
+    alert(d.message);
+    if (d.code === 0) location.reload();
+});
+
+async function userAct(uid, action, role='') {
+    if (action === 'delete' && !confirm('确定要永久删除该账号吗？')) return;
     const fd = new FormData();
     fd.append('user_id', uid);
     fd.append('action', action);
+    if (role) fd.append('role', role);
     fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-    await fetch("{% url 'manager:users' %}", { method: 'POST', body: fd });
-    location.reload();
+    const r = await fetch("{% url 'manager:users' %}", { method: 'POST', body: fd });
+    const d = await r.json();
+    alert(d.message);
+    if (d.code === 0) location.reload();
 }
 </script>
 {% endblock %}
