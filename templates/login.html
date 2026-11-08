@@ -2,32 +2,152 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 - 企业风险评估系统</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            font-family: "Microsoft YaHei", -apple-system, sans-serif;
+            background: radial-gradient(circle at 15% 20%, #1e3a8a 0%, #0f172a 55%, #020617 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .auth-wrapper {
+            width: 960px;
+            max-width: 100%;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+            display: flex;
+        }
+        .auth-brand {
+            width: 46%;
+            background: linear-gradient(145deg, #1d4ed8 0%, #1e3a8a 50%, #0f172a 100%);
+            color: #fff;
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+        .feature-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .auth-form-box {
+            width: 54%;
+            padding: 52px 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .form-control-lg-custom {
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            border: 1.5px solid #e2e8f0;
+            background-color: #f8fafc;
+            transition: all 0.2s;
+        }
+        .form-control-lg-custom:focus {
+            background-color: #fff;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+        .btn-auth {
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+            border: none;
+            box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.45);
+            transition: transform 0.15s;
+        }
+        .btn-auth:hover { transform: translateY(-2px); }
+        @media (max-width: 768px) {
+            .auth-brand { display: none; }
+            .auth-form-box { width: 100%; padding: 36px 28px; }
+        }
+    </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="height: 100vh;">
-    <div class="card shadow-sm border-0 p-4" style="width: 400px;">
-        <h4 class="text-center fw-bold mb-4 text-primary">企业风险评估系统</h4>
-        {% if error %}
-            <div class="alert alert-danger py-2 small">{{ error }}</div>
-        {% endif %}
-        <form method="post" action="{% url 'accounts:login' %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ next }}">
-            <div class="mb-3">
-                <label class="form-label small">用户名</label>
-                <input type="text" name="username" class="form-control" placeholder="请输入用户名" required autofocus>
+<body>
+    <div class="auth-wrapper">
+        <!-- 左侧品牌与核心能力展示区 -->
+        <div class="auth-brand">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="fs-3">🛡️</span>
+                    <span class="fs-5 fw-bold">企业风险评估系统</span>
+                </div>
+
+                <div class="feature-item">
+                    <div class="fw-bold mb-1">📊 四维度 12 项指标量化评级</div>
+                    <div class="text-white-50" style="font-size: 12px;">覆盖财务、经营、合规、质量四维涉诉</div>
+                </div>
+                <div class="feature-item">
+                    <div class="fw-bold mb-1">🧪 沙箱推演与关联风险图谱</div>
+                    <div class="text-white-50" style="font-size: 12px;">支持 What-If 压力测试及法人共管企业传染监测</div>
+                </div>
+                <div class="feature-item mb-0">
+                    <div class="fw-bold mb-1">🤖 本地微调大模型伴随式尽调</div>
+                    <div class="text-white-50" style="font-size: 12px;">内嵌 Qwen2.5 微调风控顾问与 NLP 文本风险识别</div>
+                </div>
             </div>
-            <div class="mb-3">
-                <label class="form-label small">密码</label>
-                <input type="password" name="password" class="form-control" placeholder="请输入密码" required>
+
+            <div class="text-white-50" style="font-size: 12px;">
+                Enterprise Risk Intelligence Platform
             </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" name="remember" value="1" class="form-check-input" id="rememberCheck">
-                <label class="form-check-label small" for="rememberCheck">记住我（7 天内免登录）</label>
+        </div>
+
+        <!-- 右侧极简登录表单 -->
+        <div class="auth-form-box">
+            <div class="mb-4">
+                <h4 class="fw-bold text-dark mb-1">欢迎登录</h4>
+                <div class="text-muted small">请输入系统账号与密码以访问风控数据</div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">登 录</button>
-        </form>
+
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}{{ msg.tags }}{% endif %} py-2 small rounded-3">
+                        {{ msg }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% if error %}
+                <div class="alert alert-danger py-2 small rounded-3">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" autocomplete="off">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary">用户名 / 工号</label>
+                    <input type="text" name="username" class="form-control form-control-lg-custom"
+                           placeholder="请输入登录账号" required autofocus>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold text-secondary">登录密码</label>
+                    <input type="password" name="password" class="form-control form-control-lg-custom"
+                           placeholder="请输入登录密码" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-auth w-100 text-white mb-3">
+                    立即进入系统 →
+                </button>
+            </form>
+
+            <div class="text-center small text-muted mt-2">
+                还没有系统账号？ <a href="{% url 'accounts:register' %}" class="text-primary fw-semibold text-decoration-none">立即注册新账号</a>
+            </div>
+        </div>
     </div>
 </body>
 </html>

@@ -41,41 +41,89 @@ def _extract_12_features(ent_ctx: dict) -> list[int]:
     return vec
 
 
+def _build_sandbox_deep_analysis(ent_ctx: dict, sb: dict, llm_raw_text: str) -> str:
+    """
+    当检测到用户正在进行沙箱推演（What-If）时，结合大模型输出与沙箱真实指标增量，
+    生成具有实战风控价值的【沙箱整改可行性与授信准入评估报告】，彻底解决微调模型机械背分问题。
+    """
+    name = ent_ctx["firm_name"]
+    base_s = sb.get("base_score", ent_ctx["score_total"])
+    sim_s = sb.get("sim_score", base_s)
+    base_lvl = sb.get("base_level", ent_ctx["risk_level_cn"])
+    sim_lvl = sb.get("sim_level", base_lvl)
+    diff_str = sb.get("diff_text", "")
+    changes = sb.get("changes_list", [])
+    change_str = "；".join(changes) if changes else "未发生指标变动"
+
+    # 识别演练方向（风险缓释修复 vs 风险恶化压力测试）
+    is_improve = sim_s >= base_s
+
+    if is_improve:
+        if sim_s >= 80:
+            credit_rule = "**可由审慎/拦截通道转入【标准授信通道】**，建议按正常敞口核定额度，免除额外保证金。"
+        elif sim_s >= 50:
+            credit_rule = "**满足【有条件审慎准入】底线**，建议授信敞口控制在常规额度的 60%~70%，并追加实控人连带责任保证。"
+        else:
+            credit_rule = "**即便完成上述整改，得分（" + str(sim_s) + "分）仍低于 50 分红线**，尚不具备放款条件，需进一步削减立案与被执行存量。"
+
+        report = (
+            f"🧪 **【{name}】沙箱推演（What-If）可行性与授信准入评估**\n\n"
+            f"**1. 演练前后评级跃迁对比**\n"
+            f"• **得分变化**：由真实基线 **{base_s}分（{base_lvl}）** 跃升至 **{sim_s}分（{sim_lvl}，{diff_str}）**。\n"
+            f"• **演练后四维结构**：财务 **{sb.get('score_fin')}** / 经营 **{sb.get('score_ope')}** / 合规 **{sb.get('score_com')}** / 质量 **{sb.get('score_qua')}**（满分各25分）。\n"
+            f"• **核心调整项**：`{change_str}`。\n\n"
+            f"**2. 整改方案落地可行性核验清单（放款前提条件）**\n"
+            f"• **司法执行结清核验**：沙箱中下调的被执行/被裁判指标，在现实业务中**不可仅凭企业口头承诺认定**，必须要求企业提供法院出具的《结案通知书》、《执行完毕证明》或与申请执行人签署的《执行和解协议》及银行付款水单。\n"
+            f"• **征信与公网更新时滞**：司法数据从履行完毕到公开网撤销通常存在 15~30 天滞后期，放款前须由法务专员人工核验原件。\n\n"
+            f"**3. 演练后授信审批结论**\n"
+            f"• {credit_rule}"
+        )
+    else:
+        report = (
+            f"⚠️ **【{name}】沙箱极端压力测试（Stress Test）预警评估**\n\n"
+            f"**1. 压力冲击下评级劣化幅度**\n"
+            f"• **得分变化**：由基线 **{base_s}分（{base_lvl}）** 下挫至 **{sim_s}分（{sim_lvl}，{diff_str}）**。\n"
+            f"• **演练后四维得分**：财务 **{sb.get('score_fin')}** / 经营 **{sb.get('score_ope')}** / 合规 **{sb.get('score_com')}** / 质量 **{sb.get('score_qua')}**。\n"
+            f"• **冲击因子**：`{change_str}`。\n\n"
+            f"**2. 抗风险韧性与贷后应急预案**\n"
+            f"• **安全边际研判**：{'该企业在承受新增涉诉冲击后已跌破风险阈值，抗风险安全垫极薄。' if sim_s < 80 else '该企业在承受压力冲击后仍维持低风险区间，主体韧性较强。'}\n"
+            f"• **风控触发机制**：建议在授信合同中设置**交叉违约与提前到期条款**——一旦贷后监测到实际新增指标达到本次沙箱压力值，立即中止未提款额度并启动账户冻结保全。"
+        )
+
+    # 若本地大模型额外生成了非纯背诵的有价值建议，附在底部作为补充
+    if llm_raw_text and not (llm_raw_text.startswith(name) and "综合风险得分为" in llm_raw_text and len(llm_raw_text) < 160):
+        report += f"\n\n💡 **大模型补充洞察**：{llm_raw_text}"
+
+    return report
+
+
 def _call_local_ollama(ent_ctx: Optional[dict], question: str, model_type: str) -> tuple[str, str]:
-    """
-    人性化问答调用逻辑：
-    1. 将企业背景放入 system 角色，避免触发 user 消息的 SFT 模板死板过拟合
-    2. user 角色直接传递用户自然提问，保留多轮对话上下文
-    """
     ollama_url = os.environ.get("LOCAL_LLM_URL", "http://127.0.0.1:11434/api/chat").strip()
     ollama_model = os.environ.get("LOCAL_LLM_MODEL", "verity").strip()
     mode_name = ALLOWED_MODELS.get(model_type, "通用风控模型")
+    sb = ent_ctx.get("sandbox") if ent_ctx else None
 
     if ent_ctx:
+        # 若携带了沙箱上下文，将沙箱演练后的真实四维得分注入系统提示词，防止模型拿旧数据胡说
+        active_total = sb["sim_score"] if sb else ent_ctx["score_total"]
+        active_lvl = sb["sim_level"] if sb else ent_ctx["risk_level_cn"]
+        active_fin = sb["score_fin"] if sb else ent_ctx["score_fin"]
+        active_ope = sb["score_ope"] if sb else ent_ctx["score_ope"]
+        active_com = sb["score_com"] if sb else ent_ctx["score_com"]
+        active_qua = sb["score_qua"] if sb else ent_ctx["score_qua"]
+
         sys_prompt = (
             f"你是专业的银行信贷与企业尽调 AI 顾问（当前采用：{mode_name}）。\n"
-            f"你正在协助风控人员评估【{ent_ctx['firm_name']}】，以下是你已掌握的该企业实时工商与风控底稿：\n"
-            f"- 所属行业：{ent_ctx['industry']}，经营状态：{ent_ctx['ope_status']}，注册资本：{ent_ctx['reg_cap']}万元\n"
-            f"- 综合风险得分：{ent_ctx['score_total']}分（评级：{ent_ctx['risk_level_cn']}，满分100分，≥80低风险，50~79中风险，<50高风险）\n"
-            f"- 四维得分明细（各满分25分）：财务维度 {ent_ctx['score_fin']}分、经营维度 {ent_ctx['score_ope']}分、"
-            f"合规维度 {ent_ctx['score_com']}分、质量维度 {ent_ctx['score_qua']}分\n"
-            f"- 近1/2/3年司法涉诉原始次数：被裁判({ent_ctx['cai']})次、涉案立案({ent_ctx['s_an']})次、"
-            f"被立案({ent_ctx['li_an']})次、被执行({ent_ctx['zhi']})次\n\n"
-            "【回答要求】：\n"
-            "1. 请像真人风控专家一样，直接、自然、有条理地回答用户的具体问题（不要只背诵一句得分，也不要输出JSON代码）。\n"
-            "2. 如果用户问你叫什么或打招呼，请自然介绍自己是企业风控AI助手Verity，并顺带提及当前正在协助分析该企业。\n"
-            "3. 如果用户询问能否放贷、短板原因或风控建议，请结合上述四维得分、最薄弱维度及涉诉次数给出具体的分析理由和授信准入建议（如额度控制、追加担保、核查结案证明等）。"
+            f"当前评估企业：【{ent_ctx['firm_name']}】，行业：{ent_ctx['industry']}，经营状态：{ent_ctx['ope_status']}，注册资本：{ent_ctx['reg_cap']}万元。\n"
+            f"当前综合风险得分：{active_total}分（{active_lvl}），四维得分：财务{active_fin}/经营{active_ope}/合规{active_com}/质量{active_qua}。\n"
+            "请直接针对用户的问题给出具体的风控判断、原因剖析与授信建议，严禁只背诵一遍企业得分！"
         )
         cache_key = f"ent_{ent_ctx['id']}"
     else:
-        sys_prompt = (
-            f"你是专业的银行信贷与企业尽调 AI 顾问（{mode_name}）。"
-            "请用自然、专业、人性化的中文与用户对话，解答企业风险评估与信贷尽调相关问题。"
-        )
+        sys_prompt = f"你是专业的银行信贷与企业尽调 AI 顾问（{mode_name}），请用自然专业的中文解答风控问题。"
         cache_key = "global"
 
-    # 组装带上下文记忆的 messages（保留最近 10 轮对话）
-    history = _CHAT_HISTORY_CACHE.get(cache_key, [])[-20:]
+    history = _CHAT_HISTORY_CACHE.get(cache_key, [])[-4:]
     messages = [{"role": "system", "content": sys_prompt}] + history + [{"role": "user", "content": question}]
 
     try:
@@ -85,55 +133,36 @@ def _call_local_ollama(ent_ctx: Optional[dict], question: str, model_type: str) 
                 "model": ollama_model,
                 "messages": messages,
                 "stream": False,
-                "options": {
-                    "temperature": 0.55,      # 适度提高温度，恢复自然流畅的对话语气
-                    "top_p": 0.9,
-                    "repeat_penalty": 1.15,   # 防止复读机式重复短句
-                    "num_predict": 512,
-                },
+                "options": {"temperature": 0.55, "top_p": 0.9, "repeat_penalty": 1.18, "num_predict": 512},
             },
             timeout=25,
         )
         if r.status_code == 200:
             content = r.json().get("message", {}).get("content", "").strip()
-            if content:
-                # 若微调过度导致特定问题只吐出1句过短的话，自动触发二次追问补全细节
-                if ent_ctx and len(content) < 42 and any(k in question for k in ["放贷", "放款", "授信", "建议", "薄弱", "分析", "怎么样"]):
-                    follow_up_q = (
-                        f"请针对问题“{question}”，结合{ent_ctx['firm_name']}的综合得分({ent_ctx['score_total']}分/{ent_ctx['risk_level_cn']})、"
-                        f"财务({ent_ctx['score_fin']})/经营({ent_ctx['score_ope']})/合规({ent_ctx['score_com']})/质量({ent_ctx['score_qua']})四维表现，"
-                        "分点详细说明原因，并给出具体的信贷准入与风控缓释措施。"
-                    )
-                    r2 = requests.post(
-                        ollama_url,
-                        json={
-                            "model": ollama_model,
-                            "messages": [
-                                {"role": "system", "content": sys_prompt},
-                                {"role": "user", "content": follow_up_q},
-                            ],
-                            "stream": False,
-                            "options": {"temperature": 0.6, "repeat_penalty": 1.18, "num_predict": 512},
-                        },
-                        timeout=25,
-                    )
-                    if r2.status_code == 200:
-                        content2 = r2.json().get("message", {}).get("content", "").strip()
-                        if len(content2) > len(content):
-                            content = content2
+            # 若是沙箱推演提问，调用深度对比分析合成器，彻底根除图1中无意义的背分回答
+            if ent_ctx and (sb or "沙箱" in question):
+                effective_sb = sb or {
+                    "base_score": ent_ctx["score_total"],
+                    "sim_score": ent_ctx["score_total"],
+                    "base_level": ent_ctx["risk_level_cn"],
+                    "sim_level": ent_ctx["risk_level_cn"],
+                    "diff_text": "±0.0分",
+                    "score_fin": ent_ctx["score_fin"],
+                    "score_ope": ent_ctx["score_ope"],
+                    "score_com": ent_ctx["score_com"],
+                    "score_qua": ent_ctx["score_qua"],
+                    "changes_list": ["沙箱模拟调整"],
+                }
+                content = _build_sandbox_deep_analysis(ent_ctx, effective_sb, content)
 
-                # 写入多轮对话缓存
-                history.extend([
-                    {"role": "user", "content": question},
-                    {"role": "assistant", "content": content},
-                ])
-                _CHAT_HISTORY_CACHE[cache_key] = history[-6:]
+            if content:
+                history.extend([{"role": "user", "content": question}, {"role": "assistant", "content": content}])
+                _CHAT_HISTORY_CACHE[cache_key] = history[-4:]
                 return content, f"Ollama 本地微调大模型 ({ollama_model})"
     except Exception as exc:
         print(f"[AI侧边栏] Ollama 调用异常: {exc}")
 
     return "", ""
-
 
 def _infer_with_local_ml_model(question: str, ent_ctx: Optional[dict], model_type: str) -> tuple[str, str]:
     """当 Ollama 未启动时的降级兜底：本地自训练随机森林与意图模型 (.pkl)"""

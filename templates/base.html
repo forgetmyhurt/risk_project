@@ -177,6 +177,22 @@
             .content-area { margin-left: 78px; }
             body.copilot-open .content-area { margin-right: 0; }
         }
+        /* 标准金融尽调四列档案表格样式 */
+        .archive-table th {
+            width: 16%;
+            background-color: #f8fafc !important;
+            color: #475569;
+            font-weight: 600;
+            vertical-align: middle;
+            padding: 10px 14px;
+        }
+        .archive-table td {
+            width: 34%;
+            color: #1e293b;
+            vertical-align: middle;
+            padding: 10px 14px;
+            background-color: #ffffff;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -199,9 +215,6 @@
 
         <!-- 右侧：AI 侧边栏呼出开关 + 用户头像个人主页融合入口 -->
         <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="toggleCopilot()">
-                🤖 AI 评估侧边栏
-            </button>
             <div class="dropdown">
                 <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle gap-2"
                    id="userCenterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -270,18 +283,6 @@
             </a>
             {% endif %}
         </nav>
-
-        <!-- 底部智能风控引擎状态卡片 -->
-        <div class="sidebar-footer-card">
-            <div class="d-flex align-items-center justify-content-between mb-1">
-                <span class="fw-bold">⚡ 风控引擎 v2.0</span>
-                <span class="badge bg-success rounded-pill" style="font-size:10px;">在线</span>
-            </div>
-            <div class="text-muted mb-2" style="font-size: 11px;">四维扣分规则 + AI 侧边栏</div>
-            <button type="button" class="btn btn-sm btn-primary w-100 rounded-pill py-1" style="font-size: 12px;" onclick="toggleCopilot(true)">
-                🤖 呼出 AI 评估助手
-            </button>
-        </div>
     </aside>
 
     <!-- 主内容滚动区 -->
@@ -340,7 +341,7 @@
             </div>
 
             <div class="copilot-messages" id="copilotMessages">
-                <div class="chat-bubble chat-ai">您好！我是企业风险评估 AI 助手。{% if ent %}
+                <div class="chat-bubble chat-ai">您好！我是企业风险评估 AI 助手(Verity),您可以叫我小V。{% if ent %}
 我已自动绑定当前企业【<strong>{{ ent.firm_name }}</strong>】（综合得分 {{ ent.score_total }} 分）。您可以点击上方快捷标签，或输入任何尽调问题与我对话！{% else %}
 您可以在上方输入任意企业名称/ID，或在浏览具体【企业详情页】时呼出我，进行一对一交互式风险评估。{% endif %}</div>
             </div>
@@ -353,11 +354,36 @@
             </form>
         </div>
 
-        <!-- 模式 2：内嵌轻量化 NLP 文本风险词识别（FR-05） -->
+        <!-- 模式 2：NLP 文本风险识别 2.0（上下文否定感知 + 企业档案提取 + 大模型联动） -->
         <div id="copilotNlpPanel" class="p-3 overflow-auto flex-grow-1 d-none bg-light">
-            <div class="small text-muted mb-2">粘贴企业舆情或裁判文书摘要（1~2000字），调用容器化 NLP 词库识别风险词并评分：</div>
-            <textarea id="sideNlpText" rows="4" class="form-control form-control-sm mb-2">经查，该公司因合同违约及欠税问题被立案调查，名下部分银行账户已被冻结，今年新增2起被执行记录。</textarea>
-            <button type="button" class="btn btn-sm btn-primary w-100 mb-3" onclick="runSideNlp()">开始识别风险词</button>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold text-dark">📥 待扫描尽调/舆情文本</span>
+                <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:11px;"
+                            onclick="loadEnterpriseCorpus()">
+                        ⚡ 提取当前企业档案
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:11px;"
+                            onclick="loadNegationDemo()">
+                        🧪 否定语义测试样本
+                    </button>
+                </div>
+            </div>
+
+            <textarea id="sideNlpText" rows="5" class="form-control form-control-sm mb-2 rounded-3"
+                      placeholder="粘贴裁判文书、尽调报告或点击上方【提取当前企业档案】...">经核查，该公司主营民间借贷咨询与非融资性担保业务；今年因合同违约新增2起被执行记录，部分账户被冻结。但公司近三年无欠税记录，历史1起行政处罚已履行完毕并结案。</textarea>
+
+            <div class="d-flex gap-2 mb-3">
+                <select id="sideNlpModel" class="form-select form-select-sm" style="width: 130px;">
+                    <option value="general">通用权重</option>
+                    <option value="compliance">司法合规侧重</option>
+                    <option value="finance">财务违约侧重</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-primary flex-grow-1 rounded-pill fw-semibold" onclick="runSideNlp()">
+                    🔍 启动 NLP 2.0 语义扫描
+                </button>
+            </div>
+
             <div id="sideNlpResult" class="small"></div>
         </div>
     </aside>
@@ -481,6 +507,9 @@
         fd.append('question', q);
         fd.append('enterprise_id', entIdentifier);
         fd.append('model', document.getElementById('copilotModelSelect').value);
+        if (window.currentSandboxCtx && q.includes('沙箱')) {
+            fd.append('sandbox_ctx', JSON.stringify(window.currentSandboxCtx));
+        }
         fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
         const loadingDiv = document.createElement('div');
@@ -513,26 +542,135 @@
         msgBox.scrollTop = msgBox.scrollHeight;
     });
 
+// NLP 2.0：一键拉取当前绑定企业的经营范围与司法档案文本
+    async function loadEnterpriseCorpus() {
+        const defaultName = drawer.dataset.entName || '';
+        const currentInput = entInput.value.trim();
+        const entIdentifier = (currentInput === defaultName && drawer.dataset.entId) ? drawer.dataset.entId : currentInput;
+        if (!entIdentifier) {
+            alert('请先进入任意企业详情页，或在【对话辅助评估】顶部的企业框中输入企业名称/ID！');
+            return;
+        }
+        try {
+            const r = await fetch(`/ai/nlp/corpus/?enterprise_id=${encodeURIComponent(entIdentifier)}`);
+            const res = await r.json();
+            if (res.code === 0) {
+                document.getElementById('sideNlpText').value = res.data.corpus;
+                runSideNlp();
+            } else {
+                alert(res.message || '未找到对应企业档案');
+            }
+        } catch (e) {
+            alert('提取企业档案失败');
+        }
+    }
+
+    // NLP 2.0：载入包含“实锤风险 + 否定排除 + 结案缓释”的综合对比样本
+    function loadNegationDemo() {
+        document.getElementById('sideNlpText').value =
+            "经尽调核实，该企业经营范围含危险化学品批发与民间借贷信息中介；今年因拖欠货款发生合同违约，新增1起被执行人记录且名下基本户被查封冻结。但核查确认公司近三年无欠税及非法集资行为，早年1起立案调查已全部结清并撤诉。";
+        runSideNlp();
+    }
+
+    // 保存最近一次 NLP 扫描结构化摘要，供一键发送至大模型
+    let lastNlpSummaryPrompt = "";
+
     async function runSideNlp() {
         const text = document.getElementById('sideNlpText').value.trim();
+        const model = document.getElementById('sideNlpModel').value;
         const box = document.getElementById('sideNlpResult');
         if (!text) return;
+
+        box.innerHTML = `<div class="text-center text-muted py-3">正在执行分句与上下文语义分析...</div>`;
         const fd = new FormData();
         fd.append('text', text);
-        fd.append('model', 'general');
+        fd.append('model', model);
         fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
         const r = await fetch("{% url 'ai:model_analyze' %}", { method: 'POST', body: fd });
         const res = await r.json();
-        if (res.code !== 0) { box.innerHTML = `<div class="text-danger">${res.message}</div>`; return; }
+        if (res.code !== 0) {
+            box.innerHTML = `<div class="alert alert-danger py-2">${res.message}</div>`;
+            return;
+        }
+
         const d = res.data;
+        const lvlBadge = d.level === '低'
+            ? '<span class="badge badge-low">低风险</span>'
+            : (d.level === '中' ? '<span class="badge badge-mid">中风险</span>' : '<span class="badge badge-high">高风险</span>');
+
+        // 1. 实锤风险词标签（红色）
+        const activeTags = d.hits.map(h =>
+            `<span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1 mb-1">🔴 ${h.word} (${h.category} -${h.deduction}分)</span>`
+        ).join('') || '<span class="text-success small">未检出实锤风险词</span>';
+
+        // 2. 上下文否定/已缓释词标签（绿色删除线，直观体现 NLP 2.0 语义抗误报能力）
+        const negatedTags = (d.negated_hits && d.negated_hits.length)
+            ? d.negated_hits.map(n =>
+                `<span class="badge bg-success-subtle text-success border border-success-subtle me-1 mb-1">🟢 <del>${n.word}</del> (${n.status}·不扣分)</span>`
+              ).join('')
+            : '<span class="text-muted" style="font-size:11px;">无否定/缓释语境词</span>';
+
+        // 3. 原文双色高亮渲染
         let hl = text.slice(0, 2000);
-        d.hits.forEach(h => { hl = hl.replaceAll(h.word, `<mark class="bg-warning px-1 rounded fw-bold">${h.word}</mark>`); });
-        const tags = d.hits.map(h => `<span class="badge bg-danger-subtle text-danger me-1 mb-1">${h.word}(${h.category}×${h.count})</span>`).join('') || '未命中风险词';
+        if (d.negated_hits) {
+            d.negated_hits.forEach(n => {
+                hl = hl.replaceAll(n.word, `<mark class="bg-success-subtle text-success px-1 rounded text-decoration-line-through" title="${n.status}，已豁免扣分">${n.word}</mark>`);
+            });
+        }
+        d.hits.forEach(h => {
+            hl = hl.replaceAll(h.word, `<mark class="bg-danger-subtle text-danger px-1 rounded fw-bold" title="${h.category}，扣减 ${h.deduction} 分">${h.word}</mark>`);
+        });
+
+        // 4. 分句级溯源卡片
+        const sentListHtml = (d.sentence_analysis || []).map(s => {
+            const dot = s.severity === 'high' ? '🔴 高危句' : (s.severity === 'mid' ? '🟡 关注句' : '🟢 缓释句');
+            return `<div class="p-2 border-bottom" style="font-size:12px;">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold">${dot}</span>
+                            <span class="text-muted">${s.deduction > 0 ? '扣 ' + s.deduction + ' 分' : '已豁免扣分'}</span>
+                        </div>
+                        <div class="text-secondary mt-1">${s.sentence}</div>
+                    </div>`;
+        }).join('');
+
+        // 组装推送给 risk-qwen 大模型的联动 Prompt
+        const activeNames = d.hits.map(h => `${h.word}(${h.category})`).join('、') || '无实锤风险词';
+        const negNames = (d.negated_hits || []).map(n => `${n.word}(${n.status})`).join('、') || '无';
+        lastNlpSummaryPrompt = `我刚通过 NLP 2.0 扫描了尽调文本，文本风险得分为 ${d.total_score} 分（${d.level}风险）。其中检出实锤风险项：【${activeNames}】；已排除/缓释项：【${negNames}】。请结合当前企业指标，针对上述实锤文本风险点给出信贷准入与合同风控条款建议。`;
+
         box.innerHTML = `
-            <div class="bg-white p-3 rounded border">
-                <div class="fw-bold mb-2">识别得分：${d.total_score} 分（${d.level}风险）</div>
-                <div class="mb-2">${tags}</div>
-                <div class="p-2 bg-light rounded">${hl}</div>
+            <div class="bg-white p-3 rounded-4 border shadow-sm">
+                <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
+                    <div>
+                        <span class="text-muted">文本健康度得分：</span>
+                        <strong class="fs-5 text-primary">${d.total_score}</strong> 分
+                    </div>
+                    ${lvlBadge}
+                </div>
+                <div class="text-muted mb-2" style="font-size:11px;">${d.summary}</div>
+
+                <div class="mb-2">
+                    <div class="fw-semibold mb-1" style="font-size:12px;">🔴 实锤风险因子（计入扣分）：</div>
+                    <div>${activeTags}</div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="fw-semibold mb-1" style="font-size:12px;">🟢 语义感知已排除/已结清项（豁免扣分）：</div>
+                    <div>${negatedTags}</div>
+                </div>
+
+                <div class="mb-2">
+                    <div class="fw-semibold mb-1" style="font-size:12px;">📑 原文双色标注对照：</div>
+                    <div class="p-2 bg-light rounded border lh-base" style="font-size:12px;">${hl}</div>
+                </div>
+
+                ${sentListHtml ? `<details class="mb-3"><summary class="text-primary fw-semibold" style="cursor:pointer;font-size:12px;">展开查看分句级风险溯源 (${d.sentence_analysis.length}句)</summary><div class="mt-1 border rounded bg-light">${sentListHtml}</div></details>` : ''}
+
+                <button type="button" class="btn btn-sm btn-warning w-100 rounded-pill fw-semibold"
+                        onclick="sendQuickPrompt(lastNlpSummaryPrompt)">
+                    🤖 将识别结果推送至微调大模型生成防控建议 →
+                </button>
             </div>
         `;
     }

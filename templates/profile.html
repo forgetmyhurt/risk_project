@@ -1,197 +1,334 @@
 {% extends "base.html" %}
 {% block title %}个人主页与工作台 - 企业风险评估系统{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold m-0">个人主页与工作台</h5>
-    <span class="badge {% if is_admin %}bg-warning text-dark{% else %}bg-primary{% endif %} fs-6">
-        当前身份：{% if request.user.is_superuser %}超级管理员{% elif is_admin %}系统管理员{% else %}普通尽调员{% endif %}
-    </span>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="fw-bold m-0">👤 个人主页与工作台</h5>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+            ✏️ 编辑个人资料
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#changePwdModal">
+            🔒 修改登录密码
+        </button>
+    </div>
 </div>
 
-{% if msg %}<div class="alert alert-success py-2 small">{{ msg }}</div>{% endif %}
-{% if err %}<div class="alert alert-danger py-2 small">{{ err }}</div>{% endif %}
-
-<div class="row g-4">
-    <!-- 左栏：个人名片 + 资料修改 + 密码重置 -->
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm p-4 mb-4">
-            <div class="d-flex align-items-center gap-3 border-bottom pb-3 mb-3">
-                <div class="avatar-circle" style="width:56px;height:56px;font-size:22px;">
-                    {{ request.user.username|slice:":1"|upper }}
-                </div>
-                <div>
-                    <h6 class="fw-bold mb-1">{{ request.user.username }}</h6>
-                    <div class="text-muted small">上次登录：{{ request.user.last_login|date:"Y-m-d H:i"|default:"首次登录" }}</div>
-                </div>
-            </div>
-
-            <h6 class="fw-bold small mb-2">个人信息维护</h6>
-            <form method="post" class="mb-4">
-                {% csrf_token %}
-                <input type="hidden" name="form_type" value="info">
-                <div class="mb-2">
-                    <label class="form-label small text-muted mb-1">所属部门</label>
-                    <input type="text" name="department" value="{{ profile.department }}" class="form-control form-control-sm" placeholder="例如：信贷审批部">
-                </div>
-                <div class="mb-2">
-                    <label class="form-label small text-muted mb-1">联系电话</label>
-                    <input type="text" name="phone" value="{{ profile.phone }}" class="form-control form-control-sm" placeholder="请输入手机号">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small text-muted mb-1">电子邮箱</label>
-                    <input type="email" name="email" value="{{ request.user.email }}" class="form-control form-control-sm" placeholder="user@example.com">
-                </div>
-                <button type="submit" class="btn btn-sm btn-primary w-100">保存个人资料</button>
-            </form>
-
-            <h6 class="fw-bold small border-top pt-3 mb-2">安全密码修改</h6>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="form_type" value="pwd">
-                <div class="mb-2">
-                    <input type="password" name="old_password" class="form-control form-control-sm" placeholder="当前原密码" required>
-                </div>
-                <div class="mb-3">
-                    <input type="password" name="new_password" class="form-control form-control-sm" placeholder="新密码（至少 6 位）" required>
-                </div>
-                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">更新登录密码</button>
-            </form>
+{% if messages %}
+    {% for msg in messages %}
+        <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}{{ msg.tags }}{% endif %} alert-dismissible fade show py-2 small" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
         </div>
-    </div>
+    {% endfor %}
+{% endif %}
 
-    <!-- 右栏：按角色分层级的仪表盘视图 -->
-    <div class="col-md-8">
-        <!-- 1. 滚动用户活动日志提醒 -->
-        <div class="card border-0 shadow-sm p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold m-0">
-                    🔔 {% if is_admin %}全平台实时活动日志滚动监控（管理员视图）{% else %}我的近期操作轨迹（个人视图）{% endif %}
-                </h6>
-                <span class="badge bg-success-subtle text-success small">实时滚动中（悬停暂停）</span>
+<!-- 第一部分：个人数字名片与标准四列档案展示表 -->
+<div class="bubble-card p-4 mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 pb-3 mb-3 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                 style="width: 60px; height: 60px; font-size: 24px; background: linear-gradient(135deg, #2563eb, #4f46e5);">
+                {{ request.user.username|slice:":1"|upper }}
             </div>
-            <div class="log-ticker-box border rounded p-2 bg-light" id="logTicker">
-                <ul class="list-group list-group-flush small" id="logList">
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="fw-bold m-0">{{ request.user.username }}</h5>
                     {% if is_admin %}
-                        {% for l in all_logs %}
-                        <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center py-2">
-                            <div>
-                                <span class="badge bg-primary-subtle text-primary me-1">{{ l.username }}</span>
-                                <span class="badge bg-secondary-subtle text-secondary me-2">{{ l.get_action_type_display }}</span>
-                                <span>{{ l.action_desc }}</span>
-                            </div>
-                            <span class="text-muted" style="font-size:11px;">{{ l.create_time|date:"m-d H:i:s" }} ({{ l.ip_address|default:"local" }})</span>
-                        </li>
-                        {% empty %}
-                        <li class="list-group-item text-muted text-center">暂无活动日志</li>
-                        {% endfor %}
+                        <span class="badge bg-primary rounded-pill">系统管理员</span>
                     {% else %}
-                        {% for l in my_logs %}
-                        <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center py-2">
-                            <div>
-                                <span class="badge bg-secondary-subtle text-secondary me-2">{{ l.get_action_type_display }}</span>
-                                <span>{{ l.action_desc }}</span>
-                            </div>
-                            <span class="text-muted" style="font-size:11px;">{{ l.create_time|date:"Y-m-d H:i:s" }}</span>
-                        </li>
-                        {% empty %}
-                        <li class="list-group-item text-muted text-center">暂无个人操作记录</li>
-                        {% endfor %}
+                        <span class="badge bg-secondary rounded-pill">风控尽调专员</span>
                     {% endif %}
-                </ul>
+                </div>
+                <div class="text-muted small mt-1">
+                    {{ profile.department|default:"风控尽调部" }} · 最近登录：{{ request.user.last_login|date:"Y-m-d H:i"|default:"刚刚" }}
+                </div>
             </div>
         </div>
-
-        <!-- 2. 分层级专属功能面板 -->
         {% if is_admin %}
-        <div class="card border-0 shadow-sm p-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold m-0">🛡️ 管理员专属：快捷账号管理与权限授予</h6>
-                <a href="{% url 'manager:dashboard' %}" class="btn btn-sm btn-outline-primary">进入完整后台管理中心 →</a>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle small mb-0">
-                    <thead class="table-light">
-                        <tr><th>用户名</th><th>部门</th><th>当前角色</th><th>状态</th><th>快捷操作</th></tr>
-                    </thead>
-                    <tbody>
-                    {% for u in all_users %}
-                        <tr>
-                            <td class="fw-semibold">{{ u.username }}</td>
-                            <td>{{ u.profile.department|default:"-" }}</td>
-                            <td>
-                                {% if u.is_superuser %}<span class="badge bg-danger">超级用户</span>
-                                {% elif u.profile.role == 'admin' or u.is_staff %}<span class="badge bg-warning text-dark">管理员</span>
-                                {% else %}<span class="badge bg-secondary">普通用户</span>{% endif %}
-                            </td>
-                            <td>{% if u.is_active %}<span class="text-success">正常</span>{% else %}<span class="text-danger">已禁用</span>{% endif %}</td>
-                            <td>
-                                {% if not u.is_superuser and u != request.user %}
-                                <button class="btn btn-sm btn-outline-primary py-0" onclick="quickUserAct({{ u.id }}, 'set_role', '{% if u.profile.role == 'admin' %}normal{% else %}admin{% endif %}')">
-                                    {% if u.profile.role == 'admin' %}降为普通用户{% else %}授予管理员{% endif %}
-                                </button>
-                                <button class="btn btn-sm btn-outline-warning py-0" onclick="quickUserAct({{ u.id }}, 'toggle_active')">启用/禁用</button>
-                                {% else %}
-                                <span class="text-muted">系统保护</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% else %}
-        <div class="card border-0 shadow-sm p-4">
-            <h6 class="fw-bold mb-3">📌 普通用户快捷尽调工作台</h6>
-            <div class="row g-3 small">
-                <div class="col-md-6">
-                    <div class="p-3 border rounded bg-light">
-                        <div class="text-muted">当前可检索企业库</div>
-                        <div class="fs-4 fw-bold text-primary my-1">{{ ent_total }} 家</div>
-                        <a href="{% url 'enterprise:list' %}" class="text-decoration-none">立即前往组合检索 →</a>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="p-3 border rounded bg-light">
-                        <div class="text-muted">重点高风险预警企业</div>
-                        <div class="fs-4 fw-bold text-danger my-1">{{ high_risk_cnt }} 家</div>
-                        <a href="/enterprise/list/?level=H" class="text-decoration-none text-danger">查看高风险名单 →</a>
-                    </div>
-                </div>
-            </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'manager:users' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">🔑 账号与权限管理</a>
+            <a href="{% url 'manager:dashboard' %}" class="btn btn-sm btn-outline-dark rounded-pill px-3">⚙️ 系统配置仪表盘</a>
         </div>
         {% endif %}
     </div>
+
+    <!-- 纯展示个人资料四列网格表 -->
+    <div class="table-responsive">
+        <table class="table table-bordered archive-table small mb-0">
+            <tbody>
+                <tr>
+                    <th>登录账号</th>
+                    <td class="fw-semibold">{{ request.user.username }}</td>
+                    <th>系统角色权限</th>
+                    <td>{% if is_admin %}管理员（全量治理与赋权权限）{% else %}普通用户（企业尽调与评估权限）{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>所属部门</th>
+                    <td>{{ profile.department|default:"未填写" }}</td>
+                    <th>联系电话</th>
+                    <td>{{ profile.phone|default:"未绑定" }}</td>
+                </tr>
+                <tr>
+                    <th>电子邮箱</th>
+                    <td>{{ request.user.email|default:"未绑定" }}</td>
+                    <th>账号注册时间</th>
+                    <td>{{ request.user.date_joined|date:"Y-m-d H:i" }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- 第二部分：管理员全局监测KPI（仅管理员可见） -->
+{% if is_admin %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="text-muted small">入库企业总数</div>
+                <div class="fs-4 fw-bold text-primary">{{ total_ent }}</div>
+            </div>
+            <span class="fs-3">🏢</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="text-muted small">高风险预警企业</div>
+                <div class="fs-4 fw-bold text-danger">{{ high_risk_cnt }}</div>
+            </div>
+            <span class="fs-3">🔴</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="text-muted small">系统注册总人数</div>
+                <div class="fs-4 fw-bold text-dark">{{ total_users }}</div>
+            </div>
+            <span class="fs-3">👥</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="text-muted small">累计尽调操作日志</div>
+                <div class="fs-4 fw-bold text-success">{{ total_logs }}</div>
+            </div>
+            <span class="fs-3">📋</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 第三部分：合二为一的【实时尽调轨迹与活动监控中心】（带滚动展示与视图切换） -->
+<div class="bubble-card p-4">
+    <div class="d-flex justify-content-between align-items-center pb-3 mb-3 border-bottom flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <h6 class="fw-bold m-0">📡 实时尽调轨迹与活动监控中心</h6>
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 11px;">
+                ● 动态滚动监控中
+            </span>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-switch m-0 me-2 small">
+                <input class="form-check-input" type="checkbox" id="autoScrollSwitch" checked>
+                <label class="form-check-label text-muted" for="autoScrollSwitch" style="font-size: 12px;">自动滚屏</label>
+            </div>
+            {% if is_admin %}
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-primary active" id="btnShowGlobal" onclick="switchLogStream('global')">
+                    🌐 全站实时活动 ({{ global_logs|length }})
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btnShowMine" onclick="switchLogStream('mine')">
+                    👤 我的尽调记录 ({{ my_logs|length }})
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 滚动表头 -->
+    <div class="row g-0 px-3 py-2 bg-light rounded-top border fw-bold text-secondary small">
+        <div class="col-md-2">操作类型</div>
+        <div class="col-md-2">执行账号</div>
+        <div class="col-md-4">尽调与操作详情</div>
+        <div class="col-md-2">终端 IP 地址</div>
+        <div class="col-md-2 text-end">发生时间</div>
+    </div>
+
+    <!-- 统一滚动容器（高度 340px，支持悬停暂停自动滚动） -->
+    <div id="unifiedLogContainer" class="border border-top-0 rounded-bottom bg-white"
+         style="height: 340px; overflow-y: auto; scroll-behavior: smooth;">
+
+        <!-- 视图 1：全站实时活动流（管理员默认展示） -->
+        {% if is_admin %}
+        <div id="streamGlobal">
+            {% for log in global_logs %}
+            <div class="row g-0 px-3 py-2 border-bottom align-items-center small log-row-hover">
+                <div class="col-md-2">
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1">
+                        {{ log.get_action_type_display|default:log.action_type|default:"系统操作" }}
+                    </span>
+                </div>
+                <div class="col-md-2 fw-semibold text-dark">
+                    👤 {{ log.user.username|default:request.user.username }}
+                </div>
+                <div class="col-md-4 text-secondary text-truncate pe-2">
+                    {% firstof log.detail log.action_detail log.description log.content log.get_action_type_display "执行系统风控数据检索与访问" %}
+                </div>
+                <div class="col-md-2 text-muted font-monospace" style="font-size: 12px;">
+                    {{ log.ip_address|default:"127.0.0.1" }}
+                </div>
+                <div class="col-md-2 text-end text-muted font-monospace" style="font-size: 12px;">
+                    {% if log.created_at %}{{ log.created_at|date:"Y-m-d H:i:s" }}
+                    {% elif log.timestamp %}{{ log.timestamp|date:"Y-m-d H:i:s" }}
+                    {% elif log.create_time %}{{ log.create_time|date:"Y-m-d H:i:s" }}
+                    {% else %}刚刚{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted py-5 small">暂无全站活动日志</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- 视图 2：当前用户个人近期评估记录流 -->
+        <div id="streamMine" class="{% if is_admin %}d-none{% endif %}">
+            {% for log in my_logs %}
+            <div class="row g-0 px-3 py-2 border-bottom align-items-center small log-row-hover">
+                <div class="col-md-2">
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1">
+                        {{ log.get_action_type_display|default:log.action_type|default:"尽调操作" }}
+                    </span>
+                </div>
+                <div class="col-md-2 fw-semibold text-primary">
+                    👤 {{ request.user.username }} (我)
+                </div>
+                <div class="col-md-4 text-secondary text-truncate pe-2">
+                    {% firstof log.detail log.action_detail log.description log.content log.get_action_type_display "执行企业风险档案检索与评估操作" %}
+                </div>
+                <div class="col-md-2 text-muted font-monospace" style="font-size: 12px;">
+                    {{ log.ip_address|default:"127.0.0.1" }}
+                </div>
+                <div class="col-md-2 text-end text-muted font-monospace" style="font-size: 12px;">
+                    {% if log.created_at %}{{ log.created_at|date:"Y-m-d H:i:s" }}
+                    {% elif log.timestamp %}{{ log.timestamp|date:"Y-m-d H:i:s" }}
+                    {% elif log.create_time %}{{ log.create_time|date:"Y-m-d H:i:s" }}
+                    {% else %}刚刚{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted py-5 small">暂无近期尽调记录</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<!-- 独立模态窗口 1：编辑个人资料表单 -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h6 class="modal-title fw-bold">✏️ 编辑个人资料</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_profile">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">登录账号（不可修改）</label>
+                        <input type="text" class="form-control form-control-sm bg-light" value="{{ request.user.username }}" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">所属部门</label>
+                        <input type="text" name="department" class="form-control form-control-sm" value="{{ profile.department|default:'' }}" placeholder="如：信贷风控部">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">联系电话</label>
+                        <input type="text" name="phone" class="form-control form-control-sm" value="{{ profile.phone|default:'' }}" placeholder="请输入手机号">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">电子邮箱</label>
+                        <input type="email" name="email" class="form-control form-control-sm" value="{{ request.user.email|default:'' }}" placeholder="name@example.com">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 独立模态窗口 2：修改登录密码表单 -->
+<div class="modal fade" id="changePwdModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h6 class="modal-title fw-bold">🔒 修改登录密码</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_password">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">当前原密码</label>
+                        <input type="password" name="old_password" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">设置新密码</label>
+                        <input type="password" name="new_password" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">确认新密码</label>
+                        <input type="password" name="confirm_password" class="form-control form-control-sm" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-sm btn-danger rounded-pill px-4">确认修改密码</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
-// 活动日志平滑自动滚动提醒（鼠标悬停暂停）
-(function() {
-    const box = document.getElementById('logTicker');
-    let paused = false;
-    box.addEventListener('mouseenter', () => paused = true);
-    box.addEventListener('mouseleave', () => paused = false);
-    setInterval(() => {
-        if (paused || box.scrollHeight <= box.clientHeight) return;
-        box.scrollTop += 1;
-        if (box.scrollTop + box.clientHeight >= box.scrollHeight - 1) {
-            box.scrollTop = 0;
+    function switchLogStream(mode) {
+        const isGlobal = mode === 'global';
+        const gEl = document.getElementById('streamGlobal');
+        const mEl = document.getElementById('streamMine');
+        if (gEl && mEl) {
+            gEl.classList.toggle('d-none', !isGlobal);
+            mEl.classList.toggle('d-none', isGlobal);
+            document.getElementById('btnShowGlobal').classList.toggle('active', isGlobal);
+            document.getElementById('btnShowMine').classList.toggle('active', !isGlobal);
+            document.getElementById('unifiedLogContainer').scrollTop = 0;
         }
-    }, 60);
-})();
+    }
 
-async function quickUserAct(uid, action, role='') {
-    const fd = new FormData();
-    fd.append('user_id', uid);
-    fd.append('action', action);
-    if (role) fd.append('role', role);
-    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-    const r = await fetch("{% url 'manager:users' %}", { method: 'POST', body: fd });
-    const d = await r.json();
-    alert(d.message);
-    if (d.code === 0) location.reload();
-}
+    // 自动循环平滑滚屏逻辑（鼠标悬停在列表上时自动暂停，移开继续滚动）
+    (function() {
+        const box = document.getElementById('unifiedLogContainer');
+        const sw = document.getElementById('autoScrollSwitch');
+        let paused = false;
+
+        box.addEventListener('mouseenter', () => { paused = true; });
+        box.addEventListener('mouseleave', () => { paused = false; });
+
+        setInterval(() => {
+            if (!sw.checked || paused) return;
+            if (box.scrollHeight <= box.clientHeight) return;
+            if (box.scrollTop + box.clientHeight >= box.scrollHeight - 2) {
+                box.scrollTop = 0;
+            } else {
+                box.scrollTop += 1;
+            }
+        }, 55);
+    })();
 </script>
 {% endblock %}

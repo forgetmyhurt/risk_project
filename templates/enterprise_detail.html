@@ -1,162 +1,151 @@
 {% extends "base.html" %}
-{% block title %}{{ ent.firm_name }} - 企业全景尽调与风控决策{% endblock %}
+{% block title %}{{ ent.firm_name }} - 企业全景尽调档案{% endblock %}
 {% block content %}
+<!-- 顶部标题与核心操作区 -->
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div>
-        <h5 class="fw-bold m-0 d-flex align-items-center gap-2">
-            <span>{{ ent.firm_name }}</span>
-            {% if ent.risk_level == 'L' %}<span class="badge badge-low">低风险 {{ ent.score_total }}分</span>
-            {% elif ent.risk_level == 'M' %}<span class="badge badge-mid">中风险 {{ ent.score_total }}分</span>
-            {% else %}<span class="badge badge-high">高风险 {{ ent.score_total }}分</span>{% endif %}
-        </h5>
-        <span class="text-muted small">统一社会信用代码：{{ ent.usc_code|default:"-" }} ｜ 行业：{{ ent.ind_econ_name|default:"综合" }}</span>
+    <div class="d-flex align-items-center gap-2">
+        <h5 class="fw-bold m-0">{{ ent.firm_name }}</h5>
+        {% if ent.risk_level == 'L' %}<span class="badge badge-low">低风险 {{ ent.score_total }}分</span>
+        {% elif ent.risk_level == 'M' %}<span class="badge badge-mid">中风险 {{ ent.score_total }}分</span>
+        {% else %}<span class="badge badge-high">高风险 {{ ent.score_total }}分</span>{% endif %}
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 fw-semibold"
                 onclick="openCopilotForEnterprise('{{ ent.id }}', '{{ ent.firm_name }}')">
-            🤖 呼出 AI 侧边栏评估
+            🤖 AI 侧边栏评估
         </button>
         <form method="post" action="{% url 'risk:score_calc' ent.id %}" class="m-0">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">重新计算评分并生成报告</button>
+            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">重新计算评分</button>
         </form>
         {% if ind %}
-            <a href="{% url 'risk:report' ind.id %}" class="btn btn-sm btn-outline-success rounded-pill px-3">查看风险报告</a>
+            <a href="{% url 'risk:report' ind.id %}" class="btn btn-sm btn-outline-success rounded-pill px-3">查看评估报告</a>
         {% endif %}
         <a href="{% url 'enterprise:list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">返回列表</a>
     </div>
 </div>
 
-<!-- 第一部分：企业四维基础档案卡片 -->
-<div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="bubble-card p-3 h-100">
-            <h6 class="fw-bold border-bottom pb-2 mb-3">📋 工商注册信息</h6>
-            <div class="row g-2 small">
-                <div class="col-6"><span class="text-muted">统一社会信用代码：</span>{{ ent.usc_code|default:"-" }}</div>
-                <div class="col-6"><span class="text-muted">法定代表人：</span><strong>{{ ent.legal_rep|default:"-" }}</strong></div>
-                <div class="col-6"><span class="text-muted">企业类别：</span>{{ ent.get_firm_category_display }}</div>
-                <div class="col-6"><span class="text-muted">企业类型：</span>{{ ent.firm_type|default:"-" }}</div>
-                <div class="col-6"><span class="text-muted">经营状态：</span>{{ ent.get_ope_status_display }}</div>
-                <div class="col-6"><span class="text-muted">成立日期：</span>{{ ent.est_date|date:"Y-m-d"|default:"-" }}</div>
-                <div class="col-6"><span class="text-muted">注册资本：</span>{{ ent.reg_cap }} 万元</div>
-                <div class="col-6"><span class="text-muted">登记机关：</span>{{ ent.reg_agency|default:"-" }}</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="bubble-card p-3 h-100">
-            <h6 class="fw-bold border-bottom pb-2 mb-3">📊 当前风险评估基线（满分 100 扣分制）</h6>
-            {% if ind %}
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div>
-                        <span class="text-muted small">当前综合得分：</span>
-                        <span class="fs-4 fw-bold ms-1">{{ ind.total_risk_score }}</span>
-                    </div>
-                    <div>
-                        {% if ind.risk_level == 'L' %}<span class="badge badge-low fs-6">低风险</span>
-                        {% elif ind.risk_level == 'M' %}<span class="badge badge-mid fs-6">中风险</span>
-                        {% else %}<span class="badge badge-high fs-6">高风险</span>{% endif %}
-                    </div>
-                </div>
-                <div class="row g-2 small">
-                    <div class="col-6">财务维度得分：<strong>{{ ind.score_fin }}</strong> / 25</div>
-                    <div class="col-6">经营维度得分：<strong>{{ ind.score_ope }}</strong> / 25</div>
-                    <div class="col-6">合规维度得分：<strong>{{ ind.score_com }}</strong> / 25</div>
-                    <div class="col-6">质量维度得分：<strong>{{ ind.score_qua }}</strong> / 25</div>
-                    <div class="col-12 text-muted mt-2">最近评分时间：{{ ind.scored_at|date:"Y-m-d H:i" }}（批次 {{ ind.batch_no }}）</div>
-                </div>
-            {% else %}
-                <p class="text-muted small">暂无风险评分记录</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="bubble-card p-3 h-100">
-            <h6 class="fw-bold border-bottom pb-2 mb-3">🏭 行业与经营范围</h6>
-            <p class="small mb-2"><span class="text-muted">所属行业：</span>{{ ent.ind_econ_name|default:"-" }}</p>
-            <p class="small mb-0"><span class="text-muted">经营范围：</span>{{ ent.business_scope|default:"-" }}</p>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="bubble-card p-3 h-100">
-            <h6 class="fw-bold border-bottom pb-2 mb-3">📍 地址与地域及扩展宽表档案</h6>
-            <p class="small mb-2"><span class="text-muted">行政区划：</span>{{ ent.province }} {{ ent.city }} {{ ent.district }}</p>
-            {% if ent.extra %}
-            <details class="small">
-                <summary class="text-primary fw-semibold" style="cursor:pointer;">展开查看其余宽表工商字段</summary>
-                <div class="row g-1 mt-2" style="max-height:140px;overflow-y:auto;">
-                    {% for k, v in ent.extra.items %}
-                        <div class="col-6 text-truncate" title="{{ v }}"><span class="text-muted">{{ k }}：</span>{{ v }}</div>
-                    {% endfor %}
-                </div>
-            </details>
-            {% endif %}
-        </div>
+<!-- 第一部分：标准四列对称《企业工商全景档案表》 -->
+<div class="bubble-card p-4 mb-4">
+    <h6 class="fw-bold mb-3">📋 企业工商全景档案</h6>
+    <div class="table-responsive">
+        <table class="table table-bordered archive-table small mb-0">
+            <tbody>
+                <tr>
+                    <th>企业名称</th>
+                    <td class="fw-semibold">{{ ent.firm_name }}</td>
+                    <th>统一社会信用代码</th>
+                    <td class="font-monospace">{{ ent.usc_code|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th>法定代表人</th>
+                    <td class="fw-semibold">{{ ent.legal_rep|default:"-" }}</td>
+                    <th>经营状态</th>
+                    <td>
+                        {% if ent.ope_status == '1' %}<span class="text-success fw-semibold">● {{ ent.get_ope_status_display }}</span>
+                        {% elif ent.ope_status == '2' %}<span class="text-secondary fw-semibold">● {{ ent.get_ope_status_display }}</span>
+                        {% else %}<span class="text-danger fw-semibold">● {{ ent.get_ope_status_display }}</span>{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>主体类别</th>
+                    <td>{{ ent.get_firm_category_display }}</td>
+                    <th>企业类型</th>
+                    <td>{{ ent.firm_type|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th>注册资本</th>
+                    <td>{{ ent.reg_cap }} 万元</td>
+                    <th>成立日期</th>
+                    <td>{{ ent.est_date|date:"Y-m-d"|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th>所属行业</th>
+                    <td>{{ ent.ind_econ_name|default:"-" }}</td>
+                    <th>所属行政区划</th>
+                    <td>{{ region_display }}</td>
+                </tr>
+                <tr>
+                    <th>主管登记机关</th>
+                    <td colspan="3">{{ ent.reg_agency|default:"-" }}</td>
+                </tr>
+                <!-- 动态渲染清洗后的高价值工商扩展字段（自动剔除坐标与内部ID） -->
+                {% for row in extra_rows %}
+                <tr>
+                    <th>{{ row.0.label }}</th>
+                    <td>{{ row.0.value }}</td>
+                    <th>{{ row.1.label }}</th>
+                    <td>{{ row.1.value }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <th>核准经营范围</th>
+                    <td colspan="3" class="lh-base">{{ ent.business_scope|default:"-" }}</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
-<!-- 第二部分：迭代点 5 —— 风险评分“沙箱模拟器”（What-If Analysis） -->
+<!-- 第二部分：风险评估基线与沙箱模拟器（What-If Analysis） -->
 <div class="bubble-card p-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3 flex-wrap gap-2">
-        <div>
-            <h5 class="fw-bold m-0 text-primary">🧪 风险评分“沙箱模拟器”（What-If Analysis）</h5>
-            <span class="text-muted small">手动调节下方 12 项风险指标或点击预设情景，实时复用扣分制算法推演得分与等级变化（纯内存演练，不污染数据库）</span>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h6 class="fw-bold m-0">🧪 四维风险评估明细与沙箱推演（What-If）</h6>
         <div class="d-flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="applyPreset('clear_zhi')">✨ 模拟结清全部被执行</button>
-            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="applyPreset('half_all')">📉 模拟涉诉指标减半</button>
-            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="applyPreset('stress_test')">⚠️ 压力测试(新增3起执行/立案)</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="applyPreset('reset')">🔄 还原真实基线</button>
+            <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="applyPreset('clear_zhi')">✨ 模拟结清被执行</button>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="applyPreset('half_all')">📉 涉诉指标减半</button>
+            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="applyPreset('stress_test')">⚠️ 压力测试</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="applyPreset('reset')">🔄 还原基线</button>
         </div>
     </div>
 
     <div class="row g-4 align-items-center">
-        <!-- 左栏：12 项指标交互调节器 -->
         <div class="col-lg-7">
             <form id="sandboxForm">
                 {% csrf_token %}
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle small mb-2">
+                    <table class="table table-sm table-bordered align-middle small mb-3">
                         <thead class="table-light text-center">
                             <tr>
-                                <th class="text-start">评估维度与指标类型</th>
-                                <th>近 1 年次数</th>
-                                <th>近 2 年次数</th>
-                                <th>近 3 年次数</th>
-                                <th>沙箱维度得分</th>
+                                <th class="text-start">评估维度与指标项</th>
+                                <th>近 1 年</th>
+                                <th>近 2 年</th>
+                                <th>近 3 年</th>
+                                <th>基线得分</th>
+                                <th>沙箱得分</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="fw-semibold">💰 财务维度：被裁判次数 (cai)</td>
+                                <td class="fw-semibold">💰 财务维度（被裁判次数）</td>
                                 <td><input type="number" min="0" max="999" name="cai_1" data-base="{{ ind.cai_1|default:0 }}" value="{{ ind.cai_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="cai_2" data-base="{{ ind.cai_2|default:0 }}" value="{{ ind.cai_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="cai_3" data-base="{{ ind.cai_3|default:0 }}" value="{{ ind.cai_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
+                                <td class="text-center text-muted">{{ ind.score_fin|default:25.0 }}</td>
                                 <td class="text-center fw-bold text-primary" id="simFin">{{ ind.score_fin|default:25.0 }}</td>
                             </tr>
                             <tr>
-                                <td class="fw-semibold">🏢 经营维度：涉案立案数 (s_an)</td>
+                                <td class="fw-semibold">🏢 经营维度（涉案立案数）</td>
                                 <td><input type="number" min="0" max="999" name="s_an_1" data-base="{{ ind.s_an_1|default:0 }}" value="{{ ind.s_an_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="s_an_2" data-base="{{ ind.s_an_2|default:0 }}" value="{{ ind.s_an_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="s_an_3" data-base="{{ ind.s_an_3|default:0 }}" value="{{ ind.s_an_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
+                                <td class="text-center text-muted">{{ ind.score_ope|default:25.0 }}</td>
                                 <td class="text-center fw-bold text-primary" id="simOpe">{{ ind.score_ope|default:25.0 }}</td>
                             </tr>
                             <tr>
-                                <td class="fw-semibold">⚖️ 合规维度：被立案次数 (li_an)</td>
+                                <td class="fw-semibold">⚖️ 合规维度（被立案次数）</td>
                                 <td><input type="number" min="0" max="999" name="li_an_1" data-base="{{ ind.li_an_1|default:0 }}" value="{{ ind.li_an_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="li_an_2" data-base="{{ ind.li_an_2|default:0 }}" value="{{ ind.li_an_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="li_an_3" data-base="{{ ind.li_an_3|default:0 }}" value="{{ ind.li_an_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
+                                <td class="text-center text-muted">{{ ind.score_com|default:25.0 }}</td>
                                 <td class="text-center fw-bold text-primary" id="simCom">{{ ind.score_com|default:25.0 }}</td>
                             </tr>
                             <tr>
-                                <td class="fw-semibold">🔨 质量维度：被执行次数 (zhi)</td>
+                                <td class="fw-semibold">🔨 质量维度（被执行次数）</td>
                                 <td><input type="number" min="0" max="999" name="zhi_1" data-base="{{ ind.zhi_1|default:0 }}" value="{{ ind.zhi_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="zhi_2" data-base="{{ ind.zhi_2|default:0 }}" value="{{ ind.zhi_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="zhi_3" data-base="{{ ind.zhi_3|default:0 }}" value="{{ ind.zhi_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
+                                <td class="text-center text-muted">{{ ind.score_qua|default:25.0 }}</td>
                                 <td class="text-center fw-bold text-primary" id="simQua">{{ ind.score_qua|default:25.0 }}</td>
                             </tr>
                         </tbody>
@@ -164,42 +153,35 @@
                 </div>
             </form>
 
-            <!-- 沙箱推演结论条 -->
             <div class="p-3 rounded-4 bg-light border d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <span class="small text-muted">真实基线：</span>
-                    <strong id="baseScoreText">{{ ent.score_total }}</strong> 分
+                    <span class="small text-muted">基线总分：</span><strong>{{ ent.score_total }}</strong>
                     <span class="mx-2">→</span>
-                    <span class="small text-muted">沙箱预测得分：</span>
-                    <strong class="fs-4 text-primary" id="simScoreText">{{ ent.score_total }}</strong> 分
+                    <span class="small text-muted">推演总分：</span>
+                    <strong class="fs-5 text-primary" id="simScoreText">{{ ent.score_total }}</strong>
                     <span id="simDiffBadge" class="badge bg-secondary ms-2">±0.0 分</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="small text-muted">预测等级：</span>
-                    <span id="simLevelBadge" class="badge {% if ent.risk_level == 'L' %}badge-low{% elif ent.risk_level == 'M' %}badge-mid{% else %}badge-high{% endif %} fs-6">
+                    <span id="simLevelBadge" class="badge {% if ent.risk_level == 'L' %}badge-low{% elif ent.risk_level == 'M' %}badge-mid{% else %}badge-high{% endif %}">
                         {{ ent.get_risk_level_display }}
                     </span>
                     <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="sendSandboxToCopilot()">
-                        🤖 发送演练结果至 AI 解读
+                        🤖 推送至 AI 解读
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- 右栏：原始基线 vs 沙箱模拟 动态双层雷达图 -->
         <div class="col-lg-5">
-            <div id="sandboxRadar" style="height: 300px;"></div>
+            <div id="sandboxRadar" style="height: 280px;"></div>
         </div>
     </div>
 </div>
 
-<!-- 第三部分：迭代点 6 —— 企业风险图谱与关联方穿透（Risk Network Graph） -->
+<!-- 第三部分：企业风险图谱与关联方穿透 -->
 <div class="bubble-card p-4">
-    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3 flex-wrap gap-2">
-        <div>
-            <h5 class="fw-bold m-0 text-primary">🕸️ 企业风险图谱与关联方穿透（Entity Relationship & Risk Contagion）</h5>
-            <span class="text-muted small">以当前企业为中心，穿透展示法定代表人、名下共管企业及同业/属地关联节点；节点按风险等级（绿/黄/红）自动染色，点击企业节点可穿透跳转</span>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h6 class="fw-bold m-0">🕸️ 企业风险图谱与关联方穿透</h6>
         <div class="d-flex align-items-center gap-2">
             <span class="badge badge-low">● 低风险</span>
             <span class="badge badge-mid">● 中风险</span>
@@ -210,56 +192,43 @@
 
     {% if contagion_alerts %}
     <div class="alert alert-warning py-2 small d-flex align-items-center justify-content-between mb-3">
-        <div>
-            <strong>⚡ 关联风险传染预警：</strong>检测到 {{ high_risk_rel_count }} 个高风险关联节点 —— {{ contagion_alerts|join:"；" }}
-        </div>
+        <div><strong>⚡ 关联传染预警：</strong>{{ contagion_alerts|join:"；" }}</div>
         <button type="button" class="btn btn-sm btn-warning py-0"
-                onclick="toggleCopilot(true); sendQuickPrompt('请结合风险图谱分析【{{ ent.firm_name }}】的关联方与法定代表人风险传染路径');">
+                onclick="toggleCopilot(true); sendQuickPrompt('请结合风险图谱分析【{{ ent.firm_name }}】的关联方风险传染路径');">
             AI 穿透分析
         </button>
     </div>
     {% endif %}
 
-    <div id="riskNetworkGraph" style="height: 440px;"></div>
+    <div id="riskNetworkGraph" style="height: 420px;"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<!-- 原 extra_js 脚本保持不变 -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
-// ==================== 迭代点 5：风险评分沙箱模拟器逻辑 ====================
 const baseScores = {{ base_scores_json|safe }};
 const sbRadar = echarts.init(document.getElementById('sandboxRadar'));
 
 function renderSandboxRadar(simScores) {
     sbRadar.setOption({
         tooltip: {},
-        legend: { bottom: 0, data: ['真实基线得分', '沙箱模拟得分'] },
+        legend: { bottom: 0, data: ['基线得分', '沙箱推演'] },
         radar: {
-            radius: '65%',
+            radius: '64%',
             indicator: [
-                { name: '财务维度(25)', max: 25 },
-                { name: '经营维度(25)', max: 25 },
-                { name: '合规维度(25)', max: 25 },
-                { name: '质量维度(25)', max: 25 }
+                { name: '财务(25)', max: 25 },
+                { name: '经营(25)', max: 25 },
+                { name: '合规(25)', max: 25 },
+                { name: '质量(25)', max: 25 }
             ]
         },
         series: [{
             type: 'radar',
             data: [
-                {
-                    value: baseScores,
-                    name: '真实基线得分',
-                    lineStyle: { type: 'dashed', color: '#64748b' },
-                    itemStyle: { color: '#64748b' }
-                },
-                {
-                    value: simScores,
-                    name: '沙箱模拟得分',
-                    areaStyle: { color: 'rgba(37, 99, 235, 0.25)' },
-                    lineStyle: { width: 2.5, color: '#2563eb' },
-                    itemStyle: { color: '#2563eb' }
-                }
+                { value: baseScores, name: '基线得分', lineStyle: { type: 'dashed', color: '#64748b' }, itemStyle: { color: '#64748b' } },
+                { value: simScores, name: '沙箱推演', areaStyle: { color: 'rgba(37, 99, 235, 0.25)' }, lineStyle: { width: 2.5, color: '#2563eb' }, itemStyle: { color: '#2563eb' } }
             ]
         }]
     });
@@ -268,8 +237,7 @@ renderSandboxRadar(baseScores);
 
 let sbTimer = null;
 async function runSandboxCalc() {
-    const form = document.getElementById('sandboxForm');
-    const fd = new FormData(form);
+    const fd = new FormData(document.getElementById('sandboxForm'));
     const r = await fetch("{% url 'risk:sandbox_calc' ent.id %}", { method: 'POST', body: fd });
     const res = await r.json();
     if (res.code !== 0) return;
@@ -284,116 +252,107 @@ async function runSandboxCalc() {
     const diffEl = document.getElementById('simDiffBadge');
     if (d.diff > 0) {
         diffEl.className = 'badge badge-low ms-2';
-        diffEl.innerText = `+${d.diff.toFixed(1)} 分 (风险改善)`;
+        diffEl.innerText = `+${d.diff.toFixed(1)} 分`;
     } else if (d.diff < 0) {
         diffEl.className = 'badge badge-high ms-2';
-        diffEl.innerText = `${d.diff.toFixed(1)} 分 (风险恶化)`;
+        diffEl.innerText = `${d.diff.toFixed(1)} 分`;
     } else {
         diffEl.className = 'badge bg-secondary ms-2';
-        diffEl.innerText = '±0.0 分 (无变化)';
+        diffEl.innerText = '±0.0 分';
     }
 
     const lvlEl = document.getElementById('simLevelBadge');
     lvlEl.innerText = d.sim_level_cn;
-    lvlEl.className = 'badge fs-6 ' + (d.sim_level === 'L' ? 'badge-low' : (d.sim_level === 'M' ? 'badge-mid' : 'badge-high'));
-
+    lvlEl.className = 'badge ' + (d.sim_level === 'L' ? 'badge-low' : (d.sim_level === 'M' ? 'badge-mid' : 'badge-high'));
     renderSandboxRadar(d.scores);
 }
 
 document.querySelectorAll('.sim-input').forEach(inp => {
-    inp.addEventListener('input', () => {
-        clearTimeout(sbTimer);
-        sbTimer = setTimeout(runSandboxCalc, 120);
-    });
+    inp.addEventListener('input', () => { clearTimeout(sbTimer); sbTimer = setTimeout(runSandboxCalc, 120); });
 });
 
 function applyPreset(mode) {
     document.querySelectorAll('.sim-input').forEach(inp => {
         const baseVal = parseInt(inp.dataset.base || '0', 10);
-        if (mode === 'reset') {
-            inp.value = baseVal;
-        } else if (mode === 'clear_zhi') {
-            inp.value = inp.name.startsWith('zhi_') ? 0 : baseVal;
-        } else if (mode === 'half_all') {
-            inp.value = Math.floor(baseVal / 2);
-        } else if (mode === 'stress_test') {
-            inp.value = (inp.name === 'zhi_1' || inp.name === 'li_an_1') ? baseVal + 3 : baseVal;
-        }
+        if (mode === 'reset') inp.value = baseVal;
+        else if (mode === 'clear_zhi') inp.value = inp.name.startsWith('zhi_') ? 0 : baseVal;
+        else if (mode === 'half_all') inp.value = Math.floor(baseVal / 2);
+        else if (mode === 'stress_test') inp.value = (inp.name === 'zhi_1' || inp.name === 'li_an_1') ? baseVal + 3 : baseVal;
     });
     runSandboxCalc();
 }
-
 function sendSandboxToCopilot() {
     const simScore = document.getElementById('simScoreText').innerText;
     const simLvl = document.getElementById('simLevelBadge').innerText.trim();
-    const diffText = document.getElementById('simDiffBadge').innerText;
+    const diffText = document.getElementById('simDiffBadge').innerText.trim();
+
+    // 1. 自动比对用户在沙箱中具体修改了哪几项指标
+    const labelMap = {
+        cai_1: '近1年被裁判', cai_2: '近2年被裁判', cai_3: '近3年被裁判',
+        s_an_1: '近1年涉案立案', s_an_2: '近2年涉案立案', s_an_3: '近3年涉案立案',
+        li_an_1: '近1年被立案', li_an_2: '近2年被立案', li_an_3: '近3年被立案',
+        zhi_1: '近1年被执行', zhi_2: '近2年被执行', zhi_3: '近3年被执行'
+    };
+    const changes = [];
+    const simMetrics = {};
+    document.querySelectorAll('.sim-input').forEach(inp => {
+        const baseVal = parseInt(inp.dataset.base || '0', 10);
+        const curVal = parseInt(inp.value || '0', 10);
+        simMetrics[inp.name] = curVal;
+        if (baseVal !== curVal) {
+            changes.push(`${labelMap[inp.name]}(${baseVal}次→${curVal}次)`);
+        }
+    });
+
+    if (changes.length === 0) {
+        alert('请先在上方沙箱表格中修改至少一项风险指标（或点击右上角预设情景按钮），再推送至 AI 进行演练评估！');
+        return;
+    }
+
+    // 2. 将沙箱实时推演状态挂载到全局，供侧边栏请求时一并传给后端
+    window.currentSandboxCtx = {
+        base_score: {{ ent.score_total }},
+        base_level: "{{ ent.get_risk_level_display }}",
+        sim_score: parseFloat(simScore),
+        sim_level: simLvl,
+        diff_text: diffText,
+        score_fin: parseFloat(document.getElementById('simFin').innerText),
+        score_ope: parseFloat(document.getElementById('simOpe').innerText),
+        score_com: parseFloat(document.getElementById('simCom').innerText),
+        score_qua: parseFloat(document.getElementById('simQua').innerText),
+        changes_list: changes,
+        metrics: simMetrics
+    };
+
+    const changeSummary = changes.slice(0, 4).join('、') + (changes.length > 4 ? ` 等${changes.length}项指标` : '');
     toggleCopilot(true);
-    sendQuickPrompt(`我在沙箱模拟器中对【{{ ent.firm_name }}】进行了What-If演练，演练后预测得分为 ${simScore} 分（${simLvl}，${diffText}），请评估该缓释方案的可行性与授信条件。`);
+    sendQuickPrompt(
+        `【沙箱推演评估】我调整了 ${changeSummary}，使综合得分从 {{ ent.score_total }} 分变为 ${simScore} 分（${simLvl}，${diffText}）。请评估该整改方案的落地难度与放款前提条件。`
+    );
 }
 
-// ==================== 迭代点 6：企业风险图谱与关联方穿透 ====================
 const graphData = {{ graph_json|safe }};
 const netChart = echarts.init(document.getElementById('riskNetworkGraph'));
-
 netChart.setOption({
     tooltip: {
-        formatter: p => {
-            if (p.dataType === 'edge') {
-                return `关联关系：<strong>${p.data.relation}</strong>`;
-            }
-            return `<strong>${p.data.name}</strong><br/>${p.data.role_desc}<br/><span style="font-size:11px;color:#94a3b8;">(点击企业节点可穿透查看详情)</span>`;
-        }
+        formatter: p => p.dataType === 'edge' ? `关联关系：<strong>${p.data.relation}</strong>` : `<strong>${p.data.name}</strong><br/>${p.data.role_desc}`
     },
-    legend: {
-        top: 5,
-        data: ['核心评估主体', '法定代表人/监管', '法人共管关联企业', '同业/区域关联监测']
-    },
+    legend: { top: 0, data: ['核心评估主体', '法定代表人/监管', '法人共管关联企业', '同业/区域关联监测'] },
     series: [{
-        type: 'graph',
-        layout: 'force',
-        roam: true,
-        draggable: true,
-        categories: [
-            { name: '核心评估主体' },
-            { name: '法定代表人/监管' },
-            { name: '法人共管关联企业' },
-            { name: '同业/区域关联监测' }
-        ],
-        label: {
-            show: true,
-            position: 'bottom',
-            fontSize: 12,
-            formatter: p => p.data.name.length > 10 ? p.data.name.slice(0, 10) + '…' : p.data.name
-        },
-        edgeSymbol: ['circle', 'arrow'],
-        edgeSymbolSize: [4, 8],
-        edgeLabel: {
-            show: true,
-            fontSize: 10,
-            color: '#64748b',
-            formatter: p => p.data.relation
-        },
-        force: {
-            repulsion: 520,
-            edgeLength: [110, 180],
-            gravity: 0.08
-        },
-        data: graphData.nodes,
-        links: graphData.links,
-        lineStyle: { opacity: 0.85, curveness: 0.12 }
+        type: 'graph', layout: 'force', roam: true, draggable: true,
+        categories: [{ name: '核心评估主体' }, { name: '法定代表人/监管' }, { name: '法人共管关联企业' }, { name: '同业/区域关联监测' }],
+        label: { show: true, position: 'bottom', fontSize: 12, formatter: p => p.data.name.length > 10 ? p.data.name.slice(0, 10) + '…' : p.data.name },
+        edgeSymbol: ['circle', 'arrow'], edgeSymbolSize: [4, 8],
+        edgeLabel: { show: true, fontSize: 10, color: '#64748b', formatter: p => p.data.relation },
+        force: { repulsion: 520, edgeLength: [110, 180], gravity: 0.08 },
+        data: graphData.nodes, links: graphData.links, lineStyle: { opacity: 0.85, curveness: 0.12 }
     }]
 });
-
-// 点击关联企业节点直接穿透跳转至该企业详情页
 netChart.on('click', params => {
     if (params.dataType === 'node' && params.data.ent_id && params.data.ent_id !== {{ ent.id }}) {
         window.location.href = `/enterprise/detail/${params.data.ent_id}/`;
     }
 });
-
-window.addEventListener('resize', () => {
-    sbRadar.resize();
-    netChart.resize();
-});
+window.addEventListener('resize', () => { sbRadar.resize(); netChart.resize(); });
 </script>
 {% endblock %}

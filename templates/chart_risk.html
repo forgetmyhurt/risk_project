@@ -3,12 +3,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h5 class="fw-bold m-0">风险数据可视化 · 悬浮气泡视图</h5>
-        <span class="text-muted small">颜色语义固定：低风险绿 #1E7B45 · 中风险黄 #B7791F · 高风险红 #C0392B</span>
+        <h5 class="fw-bold m-0">风险等级与得分分布可视化</h5>
+        <span class="text-muted small">颜色语义固定：低风险绿 、中风险黄  、高风险红 </span>
     </div>
     <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden">
-        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-light px-3">企业分布气泡</a>
-        <a href="{% url 'dashboard:chart_risk' %}" class="btn btn-primary active px-3">风险分布气泡</a>
+        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-light px-3">企业分布</a>
+        <a href="{% url 'dashboard:chart_risk' %}" class="btn btn-primary active px-3">风险分布</a>
         <a href="{% url 'dashboard:chart_compare' %}" class="btn btn-light px-3">单企雷达对比</a>
     </div>
 </div>
@@ -18,8 +18,8 @@
     <div class="col-md-4">
         <a href="/enterprise/list/?level=L" class="bubble-card bubble-orb orb-low d-flex">
             <div>
-                <div class="small fw-semibold" style="color:#1E7B45;">低风险企业气泡 (≥80分)</div>
-                <div class="fs-3 fw-bold" style="color:#1E7B45;">{{ low_c }} <span class="fs-6 fw-normal">家（点击下钻）</span></div>
+                <div class="small fw-semibold" style="color:#1E7B45;">低风险企业</div>
+                <div class="fs-3 fw-bold" style="color:#1E7B45;">{{ low_c }} <span class="fs-6 fw-normal">家</span></div>
             </div>
             <span class="badge badge-low rounded-pill px-3 py-2">安全准入</span>
         </a>
@@ -27,8 +27,8 @@
     <div class="col-md-4">
         <a href="/enterprise/list/?level=M" class="bubble-card bubble-orb orb-mid d-flex">
             <div>
-                <div class="small fw-semibold" style="color:#B7791F;">中风险关注气泡 (50~79分)</div>
-                <div class="fs-3 fw-bold" style="color:#B7791F;">{{ mid_c }} <span class="fs-6 fw-normal">家（点击下钻）</span></div>
+                <div class="small fw-semibold" style="color:#B7791F;">中风险关注 </div>
+                <div class="fs-3 fw-bold" style="color:#B7791F;">{{ mid_c }} <span class="fs-6 fw-normal">家</span></div>
             </div>
             <span class="badge badge-mid rounded-pill px-3 py-2">审慎核查</span>
         </a>
@@ -36,8 +36,8 @@
     <div class="col-md-4">
         <a href="/enterprise/list/?level=H" class="bubble-card bubble-orb orb-high d-flex">
             <div>
-                <div class="small fw-semibold" style="color:#C0392B;">高风险预警气泡 (<50分)</div>
-                <div class="fs-3 fw-bold" style="color:#C0392B;">{{ high_c }} <span class="fs-6 fw-normal">家（点击下钻）</span></div>
+                <div class="small fw-semibold" style="color:#C0392B;">高风险预警</div>
+                <div class="fs-3 fw-bold" style="color:#C0392B;">{{ high_c }} <span class="fs-6 fw-normal">家</span></div>
             </div>
             <span class="badge badge-high rounded-pill px-3 py-2">重点拦截</span>
         </a>
@@ -48,13 +48,13 @@
     <div class="row g-4">
         <div class="col-md-5">
             <div class="bubble-card p-4 h-100">
-                <h6 class="fw-bold small mb-2">🫧 风险等级构成环形气泡图（点击跳转列表）</h6>
+                <h6 class="fw-bold small mb-2">🫧 风险等级构成环形气泡图</h6>
                 <div id="chartLevel" style="height: 320px;"></div>
             </div>
         </div>
         <div class="col-md-7">
             <div class="bubble-card p-4 h-100">
-                <h6 class="fw-bold small mb-2">🫧 综合得分分布胶囊直方图（10 分一档分箱）</h6>
+                <h6 class="fw-bold small mb-2">🫧 综合得分分布胶囊直方图</h6>
                 <div id="chartHist" style="height: 320px;"></div>
             </div>
         </div>

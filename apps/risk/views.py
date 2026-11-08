@@ -11,6 +11,7 @@ from apps.risk.models import RiskIndicator
 from services.report_build import build_report_context, generate_report_pdf
 from services.risk_calc import calc_risk_score
 from apps.accounts.models import UserActivityLog, log_activity
+from services.archive_cleaner import extract_clean_archive_rows, format_region_display
 
 @login_required_custom
 def risk_list(request):
@@ -97,10 +98,14 @@ def score_calc(request, pk: int):
 
 @login_required_custom
 def risk_report(request, pk: int):
-    """FR-03-03: 风险报告四章节页面"""
     ind = get_object_or_404(RiskIndicator.objects.select_related("enterprise"), pk=pk)
-    ctx = build_report_context(ind)
-    return render(request, "report.html", ctx)
+    ent = ind.enterprise
+    return render(request, "report.html", {
+        "ind": ind,
+        "ent": ent,
+        "region_display": format_region_display(ent.province, ent.city, ent.district),
+        "extra_rows": extract_clean_archive_rows(ent),
+    })
 
 @login_required_custom
 def report_pdf(request, pk: int):

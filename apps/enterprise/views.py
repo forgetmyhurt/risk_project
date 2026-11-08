@@ -7,6 +7,7 @@ from apps.accounts.models import UserActivityLog, log_activity
 from apps.enterprise.models import Enterprise
 # 在 apps/enterprise/views.py 顶部补充导入 json 和 build_enterprise_risk_graph：
 import json
+from services.archive_cleaner import extract_clean_archive_rows, format_region_display
 from services.risk_graph import build_enterprise_risk_graph
 
 
@@ -99,15 +100,6 @@ def search_suggest(request):
 def enterprise_detail(request, pk: int):
     ent = get_object_or_404(Enterprise, pk=pk)
     latest_ind = ent.indicators.order_by("-scored_at", "-id").first()
-    log_activity(request, UserActivityLog.ActionType.QUERY, f"查看企业详情：{ent.firm_name} (ID:{ent.id})")
-    return render(request, "enterprise_detail.html", {"ent": ent, "ind": latest_ind})
-
-
-@login_required_custom
-def enterprise_detail(request, pk: int):
-    """FR-01-02 + 迭代点5(沙箱模拟器) + 迭代点6(企业风险穿透图谱)"""
-    ent = get_object_or_404(Enterprise, pk=pk)
-    latest_ind = ent.indicators.order_by("-scored_at", "-id").first()
     graph_data = build_enterprise_risk_graph(ent)
 
     base_scores = [
@@ -116,10 +108,12 @@ def enterprise_detail(request, pk: int):
         float(latest_ind.score_com) if latest_ind else 25.0,
         float(latest_ind.score_qua) if latest_ind else 25.0,
     ]
-    log_activity(request, UserActivityLog.ActionType.QUERY, f"查看企业详情与风险图谱：{ent.firm_name} (ID:{ent.id})")
+    log_activity(request, UserActivityLog.ActionType.QUERY, f"查看企业详情：{ent.firm_name}")
     return render(request, "enterprise_detail.html", {
         "ent": ent,
         "ind": latest_ind,
+        "region_display": format_region_display(ent.province, ent.city, ent.district),
+        "extra_rows": extract_clean_archive_rows(ent),
         "base_scores_json": json.dumps(base_scores),
         "graph_json": json.dumps(graph_data, ensure_ascii=False),
         "contagion_alerts": graph_data["contagion_alerts"],

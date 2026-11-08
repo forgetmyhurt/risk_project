@@ -3,8 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h5 class="fw-bold m-0">数据可视化 · 悬浮气泡视图</h5>
-        <span class="text-muted small">点击任意悬浮气泡球或图表元素，即可下钻至对应企业列表</span>
+        <h5 class="fw-bold m-0">企业分布数据可视化</h5>
     </div>
     <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden">
         <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-primary active px-3">企业分布气泡</a>
@@ -27,7 +26,7 @@
     <div class="col-md-3">
         <a href="/enterprise/list/?status=1" class="bubble-card bubble-orb orb-low d-flex">
             <div>
-                <div class="text-muted small">在营存续气泡</div>
+                <div class="text-muted small">在营存续</div>
                 <div class="fs-4 fw-bold" style="color:#1E7B45;">{{ open_cnt }} <span class="fs-6 fw-normal">家</span></div>
             </div>
             <span class="fs-3">🟢</span>
@@ -36,7 +35,7 @@
     <div class="col-md-3">
         <a href="/enterprise/list/?status=2" class="bubble-card bubble-orb orb-mid d-flex">
             <div>
-                <div class="text-muted small">已注销企业气泡</div>
+                <div class="text-muted small">已注销企业</div>
                 <div class="fs-4 fw-bold" style="color:#B7791F;">{{ cancel_cnt }} <span class="fs-6 fw-normal">家</span></div>
             </div>
             <span class="fs-3">🟡</span>
@@ -45,7 +44,7 @@
     <div class="col-md-3">
         <a href="/enterprise/list/?status=3" class="bubble-card bubble-orb orb-high d-flex">
             <div>
-                <div class="text-muted small">吊销高危气泡</div>
+                <div class="text-muted small">吊销高危</div>
                 <div class="fs-4 fw-bold" style="color:#C0392B;">{{ revoke_cnt }} <span class="fs-6 fw-normal">家</span></div>
             </div>
             <span class="fs-3">🔴</span>
