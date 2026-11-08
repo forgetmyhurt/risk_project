@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}风险阈值配置 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">风险评分阈值与服务超时配置</h5>
+    <div class="btn-group btn-group-sm">
+        <a href="{% url 'manager:dashboard' %}" class="btn btn-outline-primary">管理概览</a>
+        <a href="{% url 'manager:users' %}" class="btn btn-outline-primary">用户与权限管理</a>
+        <a href="{% url 'manager:threshold' %}" class="btn btn-primary active">风险阈值配置</a>
+    </div>
+</div>
+<div class="card border-0 shadow-sm p-4" style="max-width: 520px;">
+    <form id="thForm">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label small">低风险得分下限（默认 80 分）</label>
+            <input type="number" step="1" name="threshold_low" value="{{ config.threshold_low }}" class="form-control form-control-sm">
+        </div>
+        <div class="mb-3">
+            <label class="form-label small">中风险得分下限（默认 50 分）</label>
+            <input type="number" step="1" name="threshold_mid" value="{{ config.threshold_mid }}" class="form-control form-control-sm">
+        </div>
+        <div class="mb-3">
+            <label class="form-label small">外部 AI/NLP 服务超时时间（秒）</label>
+            <input type="number" name="timeout" value="{{ config.timeout }}" class="form-control form-control-sm">
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary px-4">保存配置</button>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('thForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const r = await fetch("{% url 'manager:threshold' %}", { method: 'POST', body: new FormData(this) });
+    const d = await r.json();
+    alert(d.message);
+});
+</script>
+{% endblock %}

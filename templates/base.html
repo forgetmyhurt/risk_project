@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}企业风险评估系统{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f4f8; font-family: "Microsoft YaHei", sans-serif; overflow-x: hidden; }
+
+        /* 顶部导航固定不滚动 */
+        .top-navbar {
+            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            background: linear-gradient(90deg, #0f172a 0%, #1e3a8a 100%);
+            box-shadow: 0 2px 16px rgba(15, 23, 42, 0.18);
+            z-index: 1045;
+        }
+
+        /* 左侧导航栏严格固定（position: fixed）+ 现代化精装视觉 */
+        .sidebar {
+            position: fixed; top: 60px; left: 0; bottom: 0; width: 240px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border-right: 1px solid #e2e8f0;
+            box-shadow: 4px 0 24px rgba(15, 23, 42, 0.03);
+            z-index: 1040;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 18px 14px;
+            overflow-y: auto;
+        }
+        .sidebar-group-title {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+            color: #94a3b8; text-transform: uppercase;
+            padding: 8px 12px 6px; margin-top: 4px;
+        }
+        .sidebar .nav-link {
+            display: flex; align-items: center; gap: 12px;
+            color: #475569; padding: 10px 14px; margin-bottom: 6px;
+            border-radius: 12px; font-size: 14px; font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+        }
+        .sidebar .nav-icon {
+            width: 32px; height: 32px; border-radius: 9px;
+            background: #f1f5f9; color: #3b82f6;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 15px; transition: all 0.2s; flex-shrink: 0;
+        }
+        .sidebar .nav-link:hover {
+            background: #f1f5f9; color: #1e293b; transform: translateX(3px);
+        }
+        .sidebar .nav-link:hover .nav-icon {
+            background: #dbeafe; transform: scale(1.06);
+        }
+        .sidebar .nav-link.active {
+            background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+            color: #ffffff; font-weight: 600;
+            box-shadow: 0 8px 18px -4px rgba(37, 99, 235, 0.42);
+        }
+        .sidebar .nav-link.active .nav-icon {
+            background: rgba(255, 255, 255, 0.22); color: #ffffff;
+        }
+        .sidebar-footer-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
+            border: 1px solid #dbeafe; border-radius: 14px; padding: 12px;
+            font-size: 12px; color: #1e3a8a;
+        }
+
+        /* 主内容区预留顶部 60px 与左侧 240px 边距 */
+        .content-area {
+            margin-top: 60px; margin-left: 240px;
+            min-height: calc(100vh - 60px); padding: 24px;
+            transition: margin-right .28s ease;
+        }
+
+        .badge-low { background-color: #1E7B45 !important; color: #fff; }
+        .badge-mid { background-color: #B7791F !important; color: #fff; }
+        .badge-high { background-color: #C0392B !important; color: #fff; }
+
+        /* 全局极简大搜索栏 */
+        .omnibox-wrap { position: relative; width: 440px; max-width: 42vw; }
+        .omnibox-input {
+            background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff; border-radius: 999px; padding: 6px 80px 6px 16px; font-size: 13px; transition: all 0.2s;
+        }
+        .omnibox-input::placeholder { color: rgba(255, 255, 255, 0.7); }
+        .omnibox-input:focus { background: #fff; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.18); outline: none; }
+        .omnibox-input:focus::placeholder { color: #94a3b8; }
+        .omnibox-kbd {
+            position: absolute; right: 36px; top: 50%; transform: translateY(-50%);
+            font-size: 11px; color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.15);
+            padding: 1px 6px; border-radius: 4px; pointer-events: none;
+        }
+        .omnibox-input:focus ~ .omnibox-kbd { display: none; }
+        .omnibox-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: #cbd5e1; }
+        .omnibox-suggest {
+            position: absolute; top: 44px; left: 0; right: 0; background: #fff; border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); border: 1px solid #e2e8f0; z-index: 2000; overflow: hidden;
+        }
+        .suggest-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 9px 14px; color: #1e293b; text-decoration: none; font-size: 13px; border-bottom: 1px solid #f1f5f9;
+        }
+        .suggest-item:hover { background: #f8fafc; }
+
+        /* 头像与个人主页融合 */
+        .avatar-circle {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-weight: 700; font-size: 15px;
+            display: inline-flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.65);
+        }
+        .log-ticker-box { height: 280px; overflow-y: auto; position: relative; }
+
+        /* 悬浮气泡块样式 */
+        @keyframes bubbleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+        .bubble-stage {
+            background: radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.08), transparent 45%),
+                        radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.08), transparent 45%);
+            border-radius: 24px; padding: 8px;
+        }
+        .bubble-card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 24px;
+            box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.07), inset 0 0 0 1px rgba(255,255,255,0.5);
+            transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.28s ease;
+        }
+        .bubble-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 36px -10px rgba(37, 99, 235, 0.14);
+        }
+        .bubble-orb {
+            border-radius: 999px; padding: 14px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; text-decoration: none; color: inherit;
+            animation: bubbleFloat 5s ease-in-out infinite;
+        }
+        .bubble-orb.orb-low { background: linear-gradient(135deg, rgba(30,123,69,0.12), rgba(255,255,255,0.92)); border: 1px solid rgba(30,123,69,0.28); }
+        .bubble-orb.orb-mid { background: linear-gradient(135deg, rgba(183,121,31,0.12), rgba(255,255,255,0.92)); border: 1px solid rgba(183,121,31,0.28); animation-delay: 1s; }
+        .bubble-orb.orb-high { background: linear-gradient(135deg, rgba(192,57,43,0.14), rgba(255,255,255,0.92)); border: 1px solid rgba(192,57,43,0.32); animation-delay: 2s; }
+
+        /* 右端 AI 评估侧边栏抽屉 */
+        .ai-fab-btn {
+            position: fixed; right: 24px; bottom: 28px; z-index: 1045;
+            border-radius: 999px; padding: 10px 20px; font-weight: 600; font-size: 14px;
+            background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); color: #fff;
+            border: none; box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+            display: flex; align-items: center; gap: 8px; transition: transform .2s;
+        }
+        .ai-fab-btn:hover { transform: scale(1.06); color: #fff; }
+        .ai-copilot-drawer {
+            position: fixed; top: 60px; right: -420px; width: 400px; max-width: 92vw;
+            height: calc(100vh - 60px); background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(16px); border-left: 1px solid #e2e8f0;
+            box-shadow: -12px 0 36px rgba(15, 23, 42, 0.14); z-index: 1050;
+            display: flex; flex-direction: column; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .ai-copilot-drawer.open { right: 0; }
+        body.copilot-open .content-area { margin-right: 400px; }
+        .copilot-messages { flex-grow: 1; overflow-y: auto; padding: 16px; background: #f8fafc; }
+        .chat-bubble { max-width: 88%; padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap; }
+        .chat-user { background: #2563eb; color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
+        .chat-ai { background: #fff; color: #1e293b; border: 1px solid #e2e8f0; margin-right: auto; border-bottom-left-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+        .prompt-chip {
+            font-size: 12px; padding: 4px 10px; border-radius: 999px;
+            background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+            cursor: pointer; transition: all .15s; white-space: nowrap;
+        }
+        .prompt-chip:hover { background: #2563eb; color: #fff; }
+
+        @media (max-width: 1200px) {
+            .sidebar { width: 78px; padding: 14px 10px; }
+            .sidebar .menu-text, .sidebar-group-title, .sidebar-footer-card { display: none; }
+            .sidebar .nav-link { justify-content: center; padding: 10px; }
+            .content-area { margin-left: 78px; }
+            body.copilot-open .content-area { margin-right: 0; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 顶部固定导航栏 -->
+    <nav class="navbar navbar-expand top-navbar px-4 text-white justify-content-between">
+        <a class="navbar-brand text-white fw-bold d-flex align-items-center gap-2" href="/">
+            <span>🛡️ 企业风险评估系统</span>
+        </a>
+
+        <!-- 全局极简大搜索栏 -->
+        <form action="{% url 'enterprise:list' %}" method="get" class="omnibox-wrap" id="omniboxForm" autocomplete="off">
+            <input type="text" name="keyword" id="omniboxInput" class="form-control omnibox-input"
+                   placeholder="搜索企业名称 / 信用代码 / 编号 / 法人 / 风险等级(如:高风险)..."
+                   value="{{ keyword|default:'' }}">
+            <span class="omnibox-kbd">Ctrl K</span>
+            <button type="submit" class="omnibox-btn" title="搜索">🔍</button>
+            <div id="omniboxDropdown" class="omnibox-suggest d-none"></div>
+        </form>
+
+        <!-- 右侧：AI 侧边栏呼出开关 + 用户头像个人主页融合入口 -->
+        <div class="d-flex align-items-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="toggleCopilot()">
+                🤖 AI 评估侧边栏
+            </button>
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle gap-2"
+                   id="userCenterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="avatar-circle">{{ request.user.username|slice:":1"|upper }}</span>
+                    <div class="text-start lh-sm d-none d-sm-block">
+                        <div class="small fw-semibold">{{ request.user.username }}</div>
+                        <div style="font-size: 11px; color: #cbd5e1;">
+                            {% if request.user.is_superuser %}超级管理员
+                            {% elif request.user.is_staff or request.user.profile.role == 'admin' %}管理员
+                            {% else %}普通用户{% endif %}
+                        </div>
+                    </div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2 mt-2" style="min-width: 230px;" aria-labelledby="userCenterDropdown">
+                    <li class="px-3 py-2 border-bottom mb-1">
+                        <div class="fw-bold small text-dark">{{ request.user.username }}</div>
+                        <div class="text-muted" style="font-size: 12px;">{{ request.user.profile.department|default:"风控尽调部" }}</div>
+                    </li>
+                    <li><a class="dropdown-item rounded py-2 small" href="{% url 'accounts:profile' %}">👤 个人主页与工作台</a></li>
+                    {% if request.user.is_superuser or request.user.is_staff or request.user.profile.role == 'admin' %}
+                    <li><a class="dropdown-item rounded py-2 small" href="{% url 'manager:dashboard' %}">⚙️ 系统管理仪表盘</a></li>
+                    <li><a class="dropdown-item rounded py-2 small" href="{% url 'manager:users' %}">🔑 账号与权限授予</a></li>
+                    {% endif %}
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                        <form action="{% url 'accounts:logout' %}" method="post" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item rounded py-2 small text-danger">🚪 退出登录</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 左侧严格固定导航菜单（已移除冗余的“AI 分析与模型”项，美化为分组卡片式导航） -->
+    <aside class="sidebar">
+        <nav class="nav flex-column">
+            <div class="sidebar-group-title">核心风控业务</div>
+            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+                <span class="nav-icon">📊</span>
+                <span class="menu-text">首页概览</span>
+            </a>
+            <a class="nav-link {% if '/enterprise/' in request.path %}active{% endif %}" href="{% url 'enterprise:list' %}">
+                <span class="nav-icon">🏢</span>
+                <span class="menu-text">企业信息库</span>
+            </a>
+            <a class="nav-link {% if '/risk/' in request.path or '/report/' in request.path %}active{% endif %}" href="{% url 'risk:list' %}">
+                <span class="nav-icon">⚖️</span>
+                <span class="menu-text">风险指标与报告</span>
+            </a>
+            <a class="nav-link {% if '/chart/' in request.path %}active{% endif %}" href="{% url 'dashboard:chart_enterprise' %}">
+                <span class="nav-icon">🫧</span>
+                <span class="menu-text">数据可视化</span>
+            </a>
+
+            <div class="sidebar-group-title mt-3">工作台与治理</div>
+            <a class="nav-link {% if '/profile/' in request.path %}active{% endif %}" href="{% url 'accounts:profile' %}">
+                <span class="nav-icon">👤</span>
+                <span class="menu-text">个人主页工作台</span>
+            </a>
+            {% if request.user.is_superuser or request.user.is_staff or request.user.profile.role == 'admin' %}
+            <a class="nav-link {% if '/manage/' in request.path %}active{% endif %}" href="{% url 'manager:dashboard' %}">
+                <span class="nav-icon">⚙️</span>
+                <span class="menu-text">后台管理中心</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <!-- 底部智能风控引擎状态卡片 -->
+        <div class="sidebar-footer-card">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fw-bold">⚡ 风控引擎 v2.0</span>
+                <span class="badge bg-success rounded-pill" style="font-size:10px;">在线</span>
+            </div>
+            <div class="text-muted mb-2" style="font-size: 11px;">四维扣分规则 + AI 侧边栏</div>
+            <button type="button" class="btn btn-sm btn-primary w-100 rounded-pill py-1" style="font-size: 12px;" onclick="toggleCopilot(true)">
+                🤖 呼出 AI 评估助手
+            </button>
+        </div>
+    </aside>
+
+    <!-- 主内容滚动区 -->
+    <main class="content-area">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 右下角呼出按钮 + 右端 AI 问答辅助评估侧边栏（内嵌问答评估与 NLP 文本识别双模式） -->
+    <button type="button" class="ai-fab-btn" id="aiFabBtn" onclick="toggleCopilot()">
+        <span>🤖 AI 风险评估助手</span>
+    </button>
+
+    <aside class="ai-copilot-drawer" id="aiCopilotDrawer"
+           data-ent-id="{% if ent %}{{ ent.id }}{% endif %}"
+           data-ent-name="{% if ent %}{{ ent.firm_name }}{% endif %}">
+        <!-- 侧边栏头部 + 模式切换 -->
+        <div class="p-3 border-bottom bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="fw-bold text-primary d-flex align-items-center gap-1">
+                    <span>🤖 AI 辅助风险评估 Copilot</span>
+                </div>
+                <button type="button" class="btn-close" onclick="toggleCopilot()"></button>
+            </div>
+            <div class="btn-group btn-group-sm w-100" role="group">
+                <button type="button" class="btn btn-outline-primary active" id="tabBtnChat" onclick="switchCopilotTab('chat')">💬 对话辅助评估</button>
+                <button type="button" class="btn btn-outline-primary" id="tabBtnNlp" onclick="switchCopilotTab('nlp')">📑 文本风险词识别</button>
+            </div>
+        </div>
+
+        <!-- 模式 1：AI 对话辅助评估 -->
+        <div id="copilotChatPanel" class="d-flex flex-column flex-grow-1" style="min-height: 0;">
+            <div class="px-3 py-2 bg-light border-bottom">
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                    <span class="small text-muted flex-shrink-0">绑定企业：</span>
+                    <input type="text" id="copilotEntInput" class="form-control form-control-sm"
+                           placeholder="输入企业名称或ID（详情页自动绑定）"
+                           value="{% if ent %}{{ ent.firm_name }}{% endif %}">
+                    <select id="copilotModelSelect" class="form-select form-select-sm" style="width: 105px;">
+                        <option value="general">通用模型</option>
+                        <option value="finance">财务侧重</option>
+                        <option value="compliance">合规侧重</option>
+                    </select>
+                </div>
+                {% if ent %}
+                <div class="mt-1 d-flex justify-content-between align-items-center" style="font-size: 11px;">
+                    <span class="text-success fw-semibold">● 已自动感知当前企业（ID: {{ ent.id }}）</span>
+                    <span>规则得分：<strong>{{ ent.score_total }}</strong> 分</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="px-3 py-2 bg-white border-bottom d-flex gap-2 overflow-auto flex-shrink-0">
+                <span class="prompt-chip" onclick="sendQuickPrompt('分析该企业的四维度薄弱项与扣分原因')">🔍 剖析四维度薄弱项</span>
+                <span class="prompt-chip" onclick="sendQuickPrompt('生成该企业的信贷准入与风控缓释建议')">🛡️ 生成信贷准入建议</span>
+                <span class="prompt-chip" onclick="sendQuickPrompt('综合评估该企业近三年涉诉与被执行风险')">⚖️ 解读司法执行风险</span>
+            </div>
+
+            <div class="copilot-messages" id="copilotMessages">
+                <div class="chat-bubble chat-ai">您好！我是企业风险评估 AI 助手。{% if ent %}
+我已自动绑定当前企业【<strong>{{ ent.firm_name }}</strong>】（综合得分 {{ ent.score_total }} 分）。您可以点击上方快捷标签，或输入任何尽调问题与我对话！{% else %}
+您可以在上方输入任意企业名称/ID，或在浏览具体【企业详情页】时呼出我，进行一对一交互式风险评估。{% endif %}</div>
+            </div>
+
+            <form id="copilotForm" class="p-3 bg-white border-top flex-shrink-0">
+                <div class="input-group input-group-sm">
+                    <input type="text" id="copilotQuestion" class="form-control" placeholder="输入问题，如：这家公司可以放款吗？" required>
+                    <button class="btn btn-primary px-3" type="submit">发送</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 模式 2：内嵌轻量化 NLP 文本风险词识别（FR-05） -->
+        <div id="copilotNlpPanel" class="p-3 overflow-auto flex-grow-1 d-none bg-light">
+            <div class="small text-muted mb-2">粘贴企业舆情或裁判文书摘要（1~2000字），调用容器化 NLP 词库识别风险词并评分：</div>
+            <textarea id="sideNlpText" rows="4" class="form-control form-control-sm mb-2">经查，该公司因合同违约及欠税问题被立案调查，名下部分银行账户已被冻结，今年新增2起被执行记录。</textarea>
+            <button type="button" class="btn btn-sm btn-primary w-100 mb-3" onclick="runSideNlp()">开始识别风险词</button>
+            <div id="sideNlpResult" class="small"></div>
+        </div>
+    </aside>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // 1. 全局大搜索栏：Ctrl+K + 实时联想
+    (function() {
+        const input = document.getElementById('omniboxInput');
+        const dropdown = document.getElementById('omniboxDropdown');
+        let timer = null;
+
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                input.focus();
+                input.select();
+            } else if (e.key === 'Escape') {
+                dropdown.classList.add('d-none');
+            }
+        });
+
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            const q = input.value.trim();
+            if (!q) { dropdown.classList.add('d-none'); return; }
+            timer = setTimeout(async () => {
+                try {
+                    const r = await fetch(`/enterprise/search/suggest/?q=${encodeURIComponent(q)}`);
+                    const d = await r.json();
+                    if (!d.items || !d.items.length) {
+                        dropdown.innerHTML = `<div class="p-3 text-muted small text-center">未找到匹配“${q}”的企业，按回车全量检索</div>`;
+                    } else {
+                        const lvlBadge = lvl => lvl === 'L'
+                            ? '<span class="badge badge-low">低风险</span>'
+                            : (lvl === 'M' ? '<span class="badge badge-mid">中风险</span>' : '<span class="badge badge-high">高风险</span>');
+                        dropdown.innerHTML = d.items.map(item => `
+                            <a href="/enterprise/detail/${item.id}/" class="suggest-item">
+                                <div class="text-truncate me-2">
+                                    <div class="fw-semibold text-dark text-truncate">${item.firm_name}</div>
+                                    <div class="text-muted" style="font-size:11px;">代码/编号：${item.usc_code} ｜ 法人：${item.legal_rep}</div>
+                                </div>
+                                <div class="text-end flex-shrink-0">
+                                    ${lvlBadge(item.risk_level)}
+                                    <div class="text-muted mt-1" style="font-size:11px;">${item.score_total} 分</div>
+                                </div>
+                            </a>
+                        `).join('') + `<a href="/enterprise/list/?keyword=${encodeURIComponent(q)}" class="d-block text-center py-2 small text-primary bg-light text-decoration-none">查看全部匹配结果 →</a>`;
+                    }
+                    dropdown.classList.remove('d-none');
+                } catch (err) {}
+            }, 220);
+        });
+
+        document.addEventListener('click', e => {
+            if (!document.getElementById('omniboxForm').contains(e.target)) {
+                dropdown.classList.add('d-none');
+            }
+        });
+    })();
+
+    // 2. 右端 AI 问答辅助评估侧边栏逻辑
+    const drawer = document.getElementById('aiCopilotDrawer');
+    const msgBox = document.getElementById('copilotMessages');
+    const entInput = document.getElementById('copilotEntInput');
+
+    function toggleCopilot(forceOpen = false) {
+        if (forceOpen) {
+            drawer.classList.add('open');
+            document.body.classList.add('copilot-open');
+        } else {
+            drawer.classList.toggle('open');
+            document.body.classList.toggle('copilot-open');
+        }
+    }
+
+    function switchCopilotTab(tab) {
+        const isChat = tab === 'chat';
+        document.getElementById('tabBtnChat').classList.toggle('active', isChat);
+        document.getElementById('tabBtnNlp').classList.toggle('active', !isChat);
+        document.getElementById('copilotChatPanel').classList.toggle('d-none', !isChat);
+        document.getElementById('copilotNlpPanel').classList.toggle('d-none', isChat);
+    }
+
+    function openCopilotForEnterprise(entId, entName) {
+        switchCopilotTab('chat');
+        drawer.dataset.entId = entId;
+        entInput.value = entName;
+        toggleCopilot(true);
+        sendQuickPrompt(`请对【${entName}】进行全面风险评估并给出信贷准入建议`);
+    }
+
+    function sendQuickPrompt(text) {
+        switchCopilotTab('chat');
+        document.getElementById('copilotQuestion').value = text;
+        document.getElementById('copilotForm').dispatchEvent(new Event('submit'));
+    }
+
+    function formatMarkdownBold(str) {
+        return str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>');
+    }
+
+    document.getElementById('copilotForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const qInput = document.getElementById('copilotQuestion');
+        const q = qInput.value.trim();
+        if (!q) return;
+
+        const uDiv = document.createElement('div');
+        uDiv.className = 'chat-bubble chat-user';
+        uDiv.textContent = q;
+        msgBox.appendChild(uDiv);
+        qInput.value = '';
+        msgBox.scrollTop = msgBox.scrollHeight;
+
+        const defaultName = drawer.dataset.entName || '';
+        const currentInput = entInput.value.trim();
+        const entIdentifier = (currentInput === defaultName && drawer.dataset.entId) ? drawer.dataset.entId : currentInput;
+
+        const fd = new FormData();
+        fd.append('question', q);
+        fd.append('enterprise_id', entIdentifier);
+        fd.append('model', document.getElementById('copilotModelSelect').value);
+        fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'chat-bubble chat-ai text-muted';
+        loadingDiv.textContent = '正在结合企业风险指标推理中...';
+        msgBox.appendChild(loadingDiv);
+        msgBox.scrollTop = msgBox.scrollHeight;
+
+        try {
+            const r = await fetch("{% url 'ai:copilot_chat' %}", { method: 'POST', body: fd });
+            const res = await r.json();
+            if (res.code === 0) {
+                loadingDiv.className = 'chat-bubble chat-ai';
+                const engineTag = res.data.engine
+                    ? `<div class="mt-2 pt-1 border-top text-muted d-flex justify-content-between" style="font-size:11px;">
+                         <span>⚡ 引擎：${res.data.engine}</span>
+                         <span>${res.data.elapsed_ms} ms</span>
+                       </div>`
+                    : '';
+                loadingDiv.innerHTML = formatMarkdownBold(res.data.reply) + engineTag;
+                if (res.data.bound_enterprise) {
+                    entInput.value = res.data.bound_enterprise.name;
+                }
+            } else {
+                loadingDiv.textContent = res.message || '请求异常';
+            }
+        } catch (err) {
+            loadingDiv.textContent = '网络请求失败，请稍后重试';
+        }
+        msgBox.scrollTop = msgBox.scrollHeight;
+    });
+
+    async function runSideNlp() {
+        const text = document.getElementById('sideNlpText').value.trim();
+        const box = document.getElementById('sideNlpResult');
+        if (!text) return;
+        const fd = new FormData();
+        fd.append('text', text);
+        fd.append('model', 'general');
+        fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        const r = await fetch("{% url 'ai:model_analyze' %}", { method: 'POST', body: fd });
+        const res = await r.json();
+        if (res.code !== 0) { box.innerHTML = `<div class="text-danger">${res.message}</div>`; return; }
+        const d = res.data;
+        let hl = text.slice(0, 2000);
+        d.hits.forEach(h => { hl = hl.replaceAll(h.word, `<mark class="bg-warning px-1 rounded fw-bold">${h.word}</mark>`); });
+        const tags = d.hits.map(h => `<span class="badge bg-danger-subtle text-danger me-1 mb-1">${h.word}(${h.category}×${h.count})</span>`).join('') || '未命中风险词';
+        box.innerHTML = `
+            <div class="bg-white p-3 rounded border">
+                <div class="fw-bold mb-2">识别得分：${d.total_score} 分（${d.level}风险）</div>
+                <div class="mb-2">${tags}</div>
+                <div class="p-2 bg-light rounded">${hl}</div>
+            </div>
+        `;
+    }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

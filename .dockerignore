@@ -1,0 +1,17 @@
+# 排除大模型微调产物与转换工具（由宿主机 Ollama 托管推理）
+llama-cpp/
+llama.cpp/
+output_qwen_risk_lora/
+output_qwen_risk_merged/
+*.gguf
+*.safetensors
+
+# 排除虚拟环境与缓存
+__pycache__/
+*.pyc
+.git/
+.idea/
+.vscode/
+venv/
+.venv/
+django_env/

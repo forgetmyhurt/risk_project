@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ ent.firm_name }} - 风险指标详情{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0">{{ ent.firm_name }} - 风险指标详情</h5>
+    <div class="d-flex gap-2">
+        <a href="{% url 'risk:report' ind.id %}" class="btn btn-sm btn-success">查看风险报告</a>
+        <a href="{% url 'risk:report_pdf' ind.id %}" class="btn btn-sm btn-primary">导出 PDF</a>
+        <a href="{% url 'risk:list' %}" class="btn btn-sm btn-outline-secondary">返回列表</a>
+    </div>
+</div>
+<div class="card border-0 shadow-sm p-4">
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">综合得分：<strong class="fs-4">{{ ind.total_risk_score }}</strong></div>
+        <div class="col-md-3">风险等级：
+            {% if ind.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
+            {% elif ind.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
+            {% else %}<span class="badge badge-high">高风险</span>{% endif %}
+        </div>
+        <div class="col-md-3">公式版本：{{ ind.algo_version }}</div>
+        <div class="col-md-3">评分时间：{{ ind.scored_at|date:"Y-m-d H:i" }}</div>
+    </div>
+    <table class="table table-bordered small">
+        <thead class="table-light">
+            <tr><th>评估维度</th><th>维度得分 (满分25)</th><th>近1年指标</th><th>近2年指标</th><th>近3年指标</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>财务维度（被裁判次数）</td><td>{{ ind.score_fin }}</td><td>{{ ind.cai_1 }}</td><td>{{ ind.cai_2 }}</td><td>{{ ind.cai_3 }}</td></tr>
+            <tr><td>经营维度（涉案立案数）</td><td>{{ ind.score_ope }}</td><td>{{ ind.s_an_1 }}</td><td>{{ ind.s_an_2 }}</td><td>{{ ind.s_an_3 }}</td></tr>
+            <tr><td>合规维度（被立案次数）</td><td>{{ ind.score_com }}</td><td>{{ ind.li_an_1 }}</td><td>{{ ind.li_an_2 }}</td><td>{{ ind.li_an_3 }}</td></tr>
+            <tr><td>质量维度（被执行次数）</td><td>{{ ind.score_qua }}</td><td>{{ ind.zhi_1 }}</td><td>{{ ind.zhi_2 }}</td><td>{{ ind.zhi_3 }}</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

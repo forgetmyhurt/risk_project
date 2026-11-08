@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}单企四维度雷达图对比 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="fw-bold m-0">单企四维度均衡度 · 悬浮雷达与气泡对比</h5>
+        <span class="text-muted small">叠加同类型企业均值，直观定位短板维度，可一键呼出右侧 AI 助手深度诊断</span>
+    </div>
+    <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden">
+        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-light px-3">企业分布气泡</a>
+        <a href="{% url 'dashboard:chart_risk' %}" class="btn btn-light px-3">风险分布气泡</a>
+        <a href="{% url 'dashboard:chart_compare' %}" class="btn btn-primary active px-3">单企雷达对比</a>
+    </div>
+</div>
+
+<div class="bubble-stage">
+    <div class="bubble-card p-3 mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto"><label class="small fw-semibold">🎯 选择目标对比企业：</label></div>
+            <div class="col-md-5">
+                <select name="id" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                    {% for s in samples %}
+                        <option value="{{ s.id }}" {% if ent and s.id == ent.id %}selected{% endif %}>
+                            {{ s.firm_name }}（综合得分：{{ s.score_total }} 分）
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if ent %}
+            <div class="col-auto ms-auto d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 fw-semibold"
+                        onclick="openCopilotForEnterprise('{{ ent.id }}', '{{ ent.firm_name }}')">
+                    🤖 呼出 AI 侧边栏诊断该企业
+                </button>
+                <a href="{% url 'enterprise:detail' ent.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">查看企业档案 →</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="row g-4">
+        <!-- 左栏：雷达图气泡卡 -->
+        <div class="col-md-7">
+            <div class="bubble-card p-4 h-100">
+                <h6 class="fw-bold small mb-2">🫧 四维度均衡度雷达图（当前企业 vs 同类型均值）</h6>
+                <div id="chartRadar" style="height: 360px;"></div>
+            </div>
+        </div>
+
+        <!-- 右栏：四维度差值悬浮气泡矩阵 -->
+        <div class="col-md-5">
+            <div class="row g-3">
+                {% for d in dim_compare %}
+                <div class="col-12">
+                    <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold small">{{ d.name }}</div>
+                            <div class="text-muted" style="font-size: 12px;">本企得分：<strong>{{ d.ent }}</strong> / 25 ｜ 同类均值：{{ d.avg }}</div>
+                        </div>
+                        <div class="text-end">
+                            {% if d.diff >= 0 %}
+                                <span class="badge badge-low rounded-pill px-3 py-2">高于均值 +{{ d.diff }}</span>
+                            {% else %}
+                                <span class="badge badge-high rounded-pill px-3 py-2">低于均值 {{ d.diff }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+const radar = echarts.init(document.getElementById('chartRadar'));
+radar.setOption({
+    tooltip: {},
+    legend: { bottom: 0, data: ['当前企业得分', '同类型企业均值'] },
+    radar: {
+        radius: '68%',
+        indicator: [
+            { name: '财务维度 (25分)', max: 25 },
+            { name: '经营维度 (25分)', max: 25 },
+            { name: '合规维度 (25分)', max: 25 },
+            { name: '质量维度 (25分)', max: 25 }
+        ]
+    },
+    series: [{
+        type: 'radar',
+        data: [
+            {
+                value: {{ ent_scores_json|safe }},
+                name: '当前企业得分',
+                areaStyle: { color: 'rgba(37, 99, 235, 0.25)' },
+                lineStyle: { color: '#2563eb', width: 2 },
+                itemStyle: { color: '#2563eb' }
+            },
+            {
+                value: {{ avg_scores_json|safe }},
+                name: '同类型企业均值',
+                areaStyle: { color: 'rgba(16, 185, 129, 0.15)' },
+                lineStyle: { color: '#10b981', type: 'dashed' },
+                itemStyle: { color: '#10b981' }
+            }
+        ]
+    }]
+});
+window.addEventListener('resize', () => radar.resize());
+</script>
+{% endblock %}

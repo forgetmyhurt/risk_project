@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}风险数据可视化 - 企业风险评估系统{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="fw-bold m-0">风险数据可视化 · 悬浮气泡视图</h5>
+        <span class="text-muted small">颜色语义固定：低风险绿 #1E7B45 · 中风险黄 #B7791F · 高风险红 #C0392B</span>
+    </div>
+    <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden">
+        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-light px-3">企业分布气泡</a>
+        <a href="{% url 'dashboard:chart_risk' %}" class="btn btn-primary active px-3">风险分布气泡</a>
+        <a href="{% url 'dashboard:chart_compare' %}" class="btn btn-light px-3">单企雷达对比</a>
+    </div>
+</div>
+
+<!-- 顶部：三色风险等级悬浮气泡球（点击下钻对应风险列表） -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <a href="/enterprise/list/?level=L" class="bubble-card bubble-orb orb-low d-flex">
+            <div>
+                <div class="small fw-semibold" style="color:#1E7B45;">低风险企业气泡 (≥80分)</div>
+                <div class="fs-3 fw-bold" style="color:#1E7B45;">{{ low_c }} <span class="fs-6 fw-normal">家（点击下钻）</span></div>
+            </div>
+            <span class="badge badge-low rounded-pill px-3 py-2">安全准入</span>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/enterprise/list/?level=M" class="bubble-card bubble-orb orb-mid d-flex">
+            <div>
+                <div class="small fw-semibold" style="color:#B7791F;">中风险关注气泡 (50~79分)</div>
+                <div class="fs-3 fw-bold" style="color:#B7791F;">{{ mid_c }} <span class="fs-6 fw-normal">家（点击下钻）</span></div>
+            </div>
+            <span class="badge badge-mid rounded-pill px-3 py-2">审慎核查</span>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/enterprise/list/?level=H" class="bubble-card bubble-orb orb-high d-flex">
+            <div>
+                <div class="small fw-semibold" style="color:#C0392B;">高风险预警气泡 (<50分)</div>
+                <div class="fs-3 fw-bold" style="color:#C0392B;">{{ high_c }} <span class="fs-6 fw-normal">家（点击下钻）</span></div>
+            </div>
+            <span class="badge badge-high rounded-pill px-3 py-2">重点拦截</span>
+        </a>
+    </div>
+</div>
+
+<div class="bubble-stage">
+    <div class="row g-4">
+        <div class="col-md-5">
+            <div class="bubble-card p-4 h-100">
+                <h6 class="fw-bold small mb-2">🫧 风险等级构成环形气泡图（点击跳转列表）</h6>
+                <div id="chartLevel" style="height: 320px;"></div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="bubble-card p-4 h-100">
+                <h6 class="fw-bold small mb-2">🫧 综合得分分布胶囊直方图（10 分一档分箱）</h6>
+                <div id="chartHist" style="height: 320px;"></div>
+            </div>
+        </div>
+        <div class="col-md-12">
+            <div class="bubble-card p-4">
+                <h6 class="fw-bold small mb-2">🫧 各企业类型四维度平均得分悬浮对比图</h6>
+                <div id="chartGroup" style="height: 320px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+const cLevel = echarts.init(document.getElementById('chartLevel'));
+cLevel.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} 家 ({d}%)' },
+    legend: { bottom: 0, icon: 'circle' },
+    series: [{
+        type: 'pie', radius: ['46%', '72%'],
+        itemStyle: { borderRadius: 12, borderColor: '#fff', borderWidth: 3 },
+        data: {{ level_json|safe }}
+    }]
+});
+cLevel.on('click', p => { if (p.data.level) window.location.href = `/enterprise/list/?level=${p.data.level}`; });
+
+const cHist = echarts.init(document.getElementById('chartHist'));
+cHist.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 50, right: 20, top: 20, bottom: 35 },
+    xAxis: { type: 'category', data: {{ bins_json|safe }} },
+    yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
+    series: [{
+        type: 'bar', barWidth: '52%', data: {{ bin_counts_json|safe }},
+        itemStyle: {
+            borderRadius: [12, 12, 4, 4],
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#6366f1' },
+                { offset: 1, color: '#a855f7' }
+            ])
+        }
+    }]
+});
+
+const cGroup = echarts.init(document.getElementById('chartGroup'));
+cGroup.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 0, icon: 'circle' },
+    grid: { left: 45, right: 20, top: 35, bottom: 30 },
+    xAxis: { type: 'category', data: {{ t_labels_json|safe }} },
+    yAxis: { type: 'value', max: 25, splitLine: { lineStyle: { type: 'dashed' } } },
+    series: [
+        { name: '财务维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ fin_json|safe }} },
+        { name: '经营维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ ope_json|safe }} },
+        { name: '合规维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ com_json|safe }} },
+        { name: '质量维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ qua_json|safe }} }
+    ]
+});
+window.addEventListener('resize', () => { cLevel.resize(); cHist.resize(); cGroup.resize(); });
+</script>
+{% endblock %}

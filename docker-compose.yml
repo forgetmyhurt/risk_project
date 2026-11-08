@@ -1,0 +1,70 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: risk_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: risk_assessment
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - risk_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nlp:
+    build:
+      context: ./nlp_service
+      dockerfile: Dockerfile
+    container_name: risk_nlp
+    restart: always
+    ports:
+      - "8001:8001"
+    networks:
+      - risk_net
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: risk_web
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      nlp:
+        condition: service_started
+    environment:
+      - DB_HOST=db
+      - DB_NAME=risk_assessment
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_PORT=3306
+      - NLP_SERVICE_URL=http://nlp:8001
+      - LOCAL_LLM_URL=http://host.docker.internal:11434/api/chat
+      - LOCAL_LLM_MODEL=verity
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    networks:
+      - risk_net
+
+volumes:
+  mysql_data:
+
+networks:
+  risk_net:
+    driver: bridge

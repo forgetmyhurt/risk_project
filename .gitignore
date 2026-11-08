@@ -1,0 +1,39 @@
+# ---------- 模型权重与训练输出（体积大，不入库）----------
+output_qwen_risk_merged/
+*.safetensors
+*.gguf
+*.bin
+*.pt
+*.onnx
+
+# ---------- 本地依赖与编译产物 ----------
+llama-cpp/
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+django_env/
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ---------- Django ----------
+staticfiles/
+media/
+*.sqlite3
+*.db
+.env
+local_settings.py
+
+# ---------- 系统 ----------
+.DS_Store
+Thumbs.db
+output_qwen_risk_merged/
