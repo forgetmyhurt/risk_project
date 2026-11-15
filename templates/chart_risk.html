@@ -1,120 +1,209 @@
 {% extends "base.html" %}
-{% block title %}风险数据可视化 - 企业风险评估系统{% endblock %}
+{% block title %}风险指标数据可视化 - 企业风险评估系统{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
         <h5 class="fw-bold m-0">风险等级与得分分布可视化</h5>
-        <span class="text-muted small">颜色语义固定：低风险绿 、中风险黄  、高风险红 </span>
+        <span class="badge bg-primary-subtle text-primary rounded-pill">👆 点击任意扇区或柱体可下钻查看对应分组企业</span>
     </div>
-    <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden">
-        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-light px-3">企业分布</a>
-        <a href="{% url 'dashboard:chart_risk' %}" class="btn btn-primary active px-3">风险分布</a>
-        <a href="{% url 'dashboard:chart_compare' %}" class="btn btn-light px-3">单企雷达对比</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">企业分布可视化</a>
+        <a href="{% url 'dashboard:chart_compare' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">单企雷达对比</a>
     </div>
 </div>
 
-<!-- 顶部：三色风险等级悬浮气泡球（点击下钻对应风险列表） -->
+<!-- 顶部 KPI 概览卡片（点击卡片同样可下钻） -->
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <a href="/enterprise/list/?level=L" class="bubble-card bubble-orb orb-low d-flex">
-            <div>
-                <div class="small fw-semibold" style="color:#1E7B45;">低风险企业</div>
-                <div class="fs-3 fw-bold" style="color:#1E7B45;">{{ low_c }} <span class="fs-6 fw-normal">家</span></div>
+        <a href="{% url 'enterprise:list' %}?level=L" class="text-decoration-none">
+            <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">低风险企业（点击查看列表 →）</div>
+                    <div class="fs-4 fw-bold" style="color:#1E7B45;">{{ low_c }} 家</div>
+                </div>
+                <span class="badge badge-low fs-6">低风险 L</span>
             </div>
-            <span class="badge badge-low rounded-pill px-3 py-2">安全准入</span>
         </a>
     </div>
     <div class="col-md-4">
-        <a href="/enterprise/list/?level=M" class="bubble-card bubble-orb orb-mid d-flex">
-            <div>
-                <div class="small fw-semibold" style="color:#B7791F;">中风险关注 </div>
-                <div class="fs-3 fw-bold" style="color:#B7791F;">{{ mid_c }} <span class="fs-6 fw-normal">家</span></div>
+        <a href="{% url 'enterprise:list' %}?level=M" class="text-decoration-none">
+            <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">中风险企业（点击查看列表 →）</div>
+                    <div class="fs-4 fw-bold" style="color:#B7791F;">{{ mid_c }} 家</div>
+                </div>
+                <span class="badge badge-mid fs-6">中风险 M</span>
             </div>
-            <span class="badge badge-mid rounded-pill px-3 py-2">审慎核查</span>
         </a>
     </div>
     <div class="col-md-4">
-        <a href="/enterprise/list/?level=H" class="bubble-card bubble-orb orb-high d-flex">
-            <div>
-                <div class="small fw-semibold" style="color:#C0392B;">高风险预警</div>
-                <div class="fs-3 fw-bold" style="color:#C0392B;">{{ high_c }} <span class="fs-6 fw-normal">家</span></div>
+        <a href="{% url 'enterprise:list' %}?level=H" class="text-decoration-none">
+            <div class="bubble-card p-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">高风险企业（点击查看列表 →）</div>
+                    <div class="fs-4 fw-bold" style="color:#C0392B;">{{ high_c }} 家</div>
+                </div>
+                <span class="badge badge-high fs-6">高风险 H</span>
             </div>
-            <span class="badge badge-high rounded-pill px-3 py-2">重点拦截</span>
         </a>
     </div>
 </div>
 
-<div class="bubble-stage">
-    <div class="row g-4">
-        <div class="col-md-5">
-            <div class="bubble-card p-4 h-100">
-                <h6 class="fw-bold small mb-2">🫧 风险等级构成环形气泡图</h6>
-                <div id="chartLevel" style="height: 320px;"></div>
-            </div>
-        </div>
-        <div class="col-md-7">
-            <div class="bubble-card p-4 h-100">
-                <h6 class="fw-bold small mb-2">🫧 综合得分分布胶囊直方图</h6>
-                <div id="chartHist" style="height: 320px;"></div>
-            </div>
-        </div>
-        <div class="col-md-12">
-            <div class="bubble-card p-4">
-                <h6 class="fw-bold small mb-2">🫧 各企业类型四维度平均得分悬浮对比图</h6>
-                <div id="chartGroup" style="height: 320px;"></div>
-            </div>
+<!-- 第一行：风险等级构成环形图 + 综合得分分布胶囊直方图 -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="bubble-card p-4 h-100">
+            <h6 class="fw-bold mb-3">🍩 风险等级构成环形气泡图</h6>
+            <div id="levelPieChart" style="height: 320px; cursor: pointer;"></div>
         </div>
     </div>
+    <div class="col-lg-7">
+        <div class="bubble-card p-4 h-100">
+            <h6 class="fw-bold mb-3">📊 综合得分分布胶囊直方图</h6>
+            <div id="scoreHistChart" style="height: 320px; cursor: pointer;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 第二行：各企业类型四维度平均得分悬浮对比图 -->
+<div class="bubble-card p-4">
+    <h6 class="fw-bold mb-3">🏢 各企业类型四维度平均得分悬浮对比图</h6>
+    <div id="typeDimChart" style="height: 340px; cursor: pointer;"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
-const cLevel = echarts.init(document.getElementById('chartLevel'));
-cLevel.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c} 家 ({d}%)' },
+const listBaseUrl = "{% url 'enterprise:list' %}";
+const levelData = {{ level_json|safe }};
+const bins = {{ bins_json|safe }};
+const binCounts = {{ bin_counts_json|safe }};
+const tLabels = {{ t_labels_json|safe }};
+const tRawTypes = {{ t_raw_types_json|default:t_labels_json|safe }};
+const finList = {{ fin_json|safe }};
+const opeList = {{ ope_json|safe }};
+const comList = {{ com_json|safe }};
+const quaList = {{ qua_json|safe }};
+
+// 1. 风险等级构成环形气泡图（点击扇区 -> 按 level=L/M/H 跳转）
+const pieChart = echarts.init(document.getElementById('levelPieChart'));
+pieChart.setOption({
+    tooltip: {
+        trigger: 'item',
+        formatter: p => `<strong>${p.name}</strong>：${p.value} 家 (${p.percent}%)<br/><span style="color:#2563eb;font-size:12px;">👆 点击查看全部${p.name}企业</span>`
+    },
     legend: { bottom: 0, icon: 'circle' },
     series: [{
-        type: 'pie', radius: ['46%', '72%'],
-        itemStyle: { borderRadius: 12, borderColor: '#fff', borderWidth: 3 },
-        data: {{ level_json|safe }}
+        type: 'pie',
+        radius: ['48%', '74%'],
+        padAngle: 3,
+        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 3 },
+        label: { show: true, formatter: '{b}' },
+        data: levelData
     }]
 });
-cLevel.on('click', p => { if (p.data.level) window.location.href = `/enterprise/list/?level=${p.data.level}`; });
+pieChart.on('click', params => {
+    const lvlMap = { '低风险': 'L', '中风险': 'M', '高风险': 'H' };
+    const code = (params.data && params.data.level) || lvlMap[params.name] || '';
+    if (code) {
+        window.location.href = `${listBaseUrl}?level=${encodeURIComponent(code)}`;
+    }
+});
 
-const cHist = echarts.init(document.getElementById('chartHist'));
-cHist.setOption({
-    tooltip: { trigger: 'axis' },
-    grid: { left: 50, right: 20, top: 20, bottom: 35 },
-    xAxis: { type: 'category', data: {{ bins_json|safe }} },
+// 2. 综合得分分布胶囊直方图（点击任意柱子或柱子所在列 -> 按 score_bin=xx~yy 跳转）
+const histChart = echarts.init(document.getElementById('scoreHistChart'));
+histChart.setOption({
+    tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+            const p = params[0];
+            return `得分区间：<strong>${p.name} 分</strong><br/>企业数量：<strong>${p.value} 家</strong><br/><span style="color:#2563eb;font-size:12px;">👆 点击查看该分数段企业</span>`;
+        }
+    },
+    grid: { left: '3%', right: '3%', bottom: '8%', top: '8%', containLabel: true },
+    xAxis: { type: 'category', data: bins, axisTick: { alignWithLabel: true } },
     yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
     series: [{
-        type: 'bar', barWidth: '52%', data: {{ bin_counts_json|safe }},
+        type: 'bar',
+        barWidth: '46%',
         itemStyle: {
             borderRadius: [12, 12, 4, 4],
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#6366f1' },
-                { offset: 1, color: '#a855f7' }
+                { offset: 0, color: '#4f46e5' },
+                { offset: 1, color: '#8b5cf6' }
             ])
-        }
+        },
+        data: binCounts
     }]
 });
+histChart.on('click', params => {
+    const binLabel = params.name || bins[params.dataIndex];
+    if (binLabel) {
+        window.location.href = `${listBaseUrl}?score_bin=${encodeURIComponent(binLabel)}`;
+    }
+});
+// 支持点击阴影背景柱区域同样触发跳转
+histChart.getZr().on('click', event => {
+    const pointInPixel = [event.offsetX, event.offsetY];
+    if (histChart.containPixel('grid', pointInPixel)) {
+        const xIndex = histChart.convertFromPixel({ seriesIndex: 0 }, pointInPixel)[0];
+        if (bins[xIndex]) {
+            window.location.href = `${listBaseUrl}?score_bin=${encodeURIComponent(bins[xIndex])}`;
+        }
+    }
+});
 
-const cGroup = echarts.init(document.getElementById('chartGroup'));
-cGroup.setOption({
-    tooltip: { trigger: 'axis' },
+// 3. 各企业类型四维度平均得分对比图（点击任意柱子 -> 按 firm_type 跳转）
+const typeChart = echarts.init(document.getElementById('typeDimChart'));
+typeChart.setOption({
+    tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+            const idx = params[0].dataIndex;
+            const fullType = tRawTypes[idx] || params[0].name;
+            let html = `<strong>${fullType}</strong><br/>`;
+            params.forEach(p => {
+                html += `${p.marker} ${p.seriesName}：<strong>${p.value} 分</strong><br/>`;
+            });
+            html += `<span style="color:#2563eb;font-size:12px;">👆 点击查看【${fullType}】全部企业</span>`;
+            return html;
+        }
+    },
     legend: { top: 0, icon: 'circle' },
-    grid: { left: 45, right: 20, top: 35, bottom: 30 },
-    xAxis: { type: 'category', data: {{ t_labels_json|safe }} },
+    grid: { left: '3%', right: '3%', bottom: '8%', top: '14%', containLabel: true },
+    xAxis: { type: 'category', data: tLabels },
     yAxis: { type: 'value', max: 25, splitLine: { lineStyle: { type: 'dashed' } } },
     series: [
-        { name: '财务维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ fin_json|safe }} },
-        { name: '经营维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ ope_json|safe }} },
-        { name: '合规维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ com_json|safe }} },
-        { name: '质量维度', type: 'bar', barWidth: 14, itemStyle: { borderRadius: [6,6,0,0] }, data: {{ qua_json|safe }} }
+        { name: '财务维度', type: 'bar', barGap: '15%', barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0], color: '#4f6bed' }, data: finList },
+        { name: '经营维度', type: 'bar', barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0], color: '#82c96e' }, data: opeList },
+        { name: '合规维度', type: 'bar', barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0], color: '#f5c356' }, data: comList },
+        { name: '质量维度', type: 'bar', barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0], color: '#eb6565' }, data: quaList }
     ]
 });
-window.addEventListener('resize', () => { cLevel.resize(); cHist.resize(); cGroup.resize(); });
+typeChart.on('click', params => {
+    const rawType = tRawTypes[params.dataIndex] || params.name;
+    if (rawType) {
+        window.location.href = `${listBaseUrl}?firm_type=${encodeURIComponent(rawType)}`;
+    }
+});
+typeChart.getZr().on('click', event => {
+    const pointInPixel = [event.offsetX, event.offsetY];
+    if (typeChart.containPixel('grid', pointInPixel)) {
+        const xIndex = typeChart.convertFromPixel({ seriesIndex: 0 }, pointInPixel)[0];
+        const rawType = tRawTypes[xIndex];
+        if (rawType) {
+            window.location.href = `${listBaseUrl}?firm_type=${encodeURIComponent(rawType)}`;
+        }
+    }
+});
+
+window.addEventListener('resize', () => {
+    pieChart.resize();
+    histChart.resize();
+    typeChart.resize();
+});
 </script>
 {% endblock %}

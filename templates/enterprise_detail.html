@@ -1,7 +1,40 @@
 {% extends "base.html" %}
-{% block title %}{{ ent.firm_name }} - 企业全景尽调档案{% endblock %}
+{% block title %}{{ ent.firm_name }} - 企业全量尽调档案{% endblock %}
 {% block content %}
-<!-- 顶部标题与核心操作区 -->
+<style>
+    .full-archive-table {
+        border: 1px solid #cbd5e1;
+    }
+    .full-archive-table .section-bar {
+        background: linear-gradient(90deg, #eff6ff 0%, #f8fafc 100%) !important;
+        color: #1e3a8a;
+        font-weight: 700;
+        font-size: 13px;
+        padding: 9px 14px;
+        border-top: 2px solid #bfdbfe;
+        border-bottom: 1px solid #cbd5e1;
+    }
+    .full-archive-table th {
+        width: 17%;
+        background-color: #f8fafc !important;
+        color: #475569;
+        font-weight: 600;
+        vertical-align: middle;
+        padding: 10px 14px;
+        border-color: #e2e8f0;
+    }
+    .full-archive-table td {
+        width: 33%;
+        color: #0f172a;
+        vertical-align: middle;
+        padding: 10px 14px;
+        background-color: #ffffff;
+        border-color: #e2e8f0;
+        word-break: break-all;
+    }
+</style>
+
+<!-- 顶部企业名称、风险评级与操作栏 -->
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
         <h5 class="fw-bold m-0">{{ ent.firm_name }}</h5>
@@ -25,52 +58,120 @@
     </div>
 </div>
 
-<!-- 第一部分：标准四列对称《企业工商全景档案表》 -->
+<!-- 第一部分：100% 纯中文《企业工商与尽调全景档案总表》（无任何数据库字段名） -->
 <div class="bubble-card p-4 mb-4">
-    <h6 class="fw-bold mb-3">📋 企业工商全景档案</h6>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <h6 class="fw-bold m-0">📋 企业工商与尽调全景档案总表</h6>
+            <span class="badge bg-primary-subtle text-primary rounded-pill">全量档案信息 ({{ total_field_count }} 项)</span>
+        </div>
+        <span class="small text-muted">最近同步时间：{{ ent.updated_at|date:"Y-m-d H:i"|default:"已核验归档" }}</span>
+    </div>
+
     <div class="table-responsive">
-        <table class="table table-bordered archive-table small mb-0">
+        <table class="table table-bordered full-archive-table small mb-0">
             <tbody>
+                <!-- 分区 1：主体身份与工商登记注册信息 -->
+                <tr>
+                    <td colspan="4" class="section-bar">一、主体身份与工商登记注册信息</td>
+                </tr>
                 <tr>
                     <th>企业名称</th>
-                    <td class="fw-semibold">{{ ent.firm_name }}</td>
+                    <td class="fw-bold text-dark">{{ ent.firm_name }}</td>
                     <th>统一社会信用代码</th>
-                    <td class="font-monospace">{{ ent.usc_code|default:"-" }}</td>
+                    <td class="font-monospace fw-semibold">{{ ent.usc_code|default:"未登记" }}</td>
                 </tr>
                 <tr>
                     <th>法定代表人</th>
-                    <td class="fw-semibold">{{ ent.legal_rep|default:"-" }}</td>
-                    <th>经营状态</th>
+                    <td class="fw-semibold text-primary">{{ ent.legal_rep|default:"未登记" }}</td>
+                    <th>登记经营状态</th>
                     <td>
-                        {% if ent.ope_status == '1' %}<span class="text-success fw-semibold">● {{ ent.get_ope_status_display }}</span>
-                        {% elif ent.ope_status == '2' %}<span class="text-secondary fw-semibold">● {{ ent.get_ope_status_display }}</span>
-                        {% else %}<span class="text-danger fw-semibold">● {{ ent.get_ope_status_display }}</span>{% endif %}
+                        {% if ent.ope_status == '1' %}<span class="badge bg-success-subtle text-success border border-success-subtle">● {{ ent.get_ope_status_display }}</span>
+                        {% elif ent.ope_status == '2' %}<span class="badge bg-secondary-subtle text-secondary border">● {{ ent.get_ope_status_display }}</span>
+                        {% else %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle">● {{ ent.get_ope_status_display }}</span>{% endif %}
                     </td>
                 </tr>
                 <tr>
-                    <th>主体类别</th>
+                    <th>工商注册号</th>
+                    <td class="font-monospace">{{ core_extra.reg_no }}</td>
+                    <th>组织机构代码</th>
+                    <td class="font-monospace">{{ core_extra.org_no }}</td>
+                </tr>
+                <tr>
+                    <th>市场主体类别</th>
                     <td>{{ ent.get_firm_category_display }}</td>
-                    <th>企业类型</th>
-                    <td>{{ ent.firm_type|default:"-" }}</td>
+                    <th>企业类型 / 组织形式</th>
+                    <td>{{ ent.firm_type|default:"未登记" }}</td>
+                </tr>
+                <tr>
+                    <th>企业全局唯一编码</th>
+                    <td class="font-monospace text-secondary">{{ core_extra.firm_id }}</td>
+                    <th>工商档案登记编号</th>
+                    <td class="font-monospace">{{ core_extra.id_num }}</td>
+                </tr>
+
+                <!-- 分区 2：资本规模、行业分类与关键经营日期 -->
+                <tr>
+                    <td colspan="4" class="section-bar">二、资本规模、行业分类与关键经营日期</td>
                 </tr>
                 <tr>
                     <th>注册资本</th>
-                    <td>{{ ent.reg_cap }} 万元</td>
-                    <th>成立日期</th>
-                    <td>{{ ent.est_date|date:"Y-m-d"|default:"-" }}</td>
+                    <td class="fw-bold text-dark">{{ ent.reg_cap }} 万元</td>
+                    <th>国民经济行业分类</th>
+                    <td>{{ ent.ind_econ_name|default:"综合行业" }}</td>
                 </tr>
                 <tr>
-                    <th>所属行业</th>
-                    <td>{{ ent.ind_econ_name|default:"-" }}</td>
+                    <th>成立日期</th>
+                    <td>{{ ent.est_date|date:"Y-m-d"|default:"未登记" }}</td>
+                    <th>开业日期</th>
+                    <td>{{ core_extra.open_date }}</td>
+                </tr>
+                <tr>
+                    <th>核准日期</th>
+                    <td>{{ core_extra.appr_date }}</td>
+                    <th>注销日期</th>
+                    <td>{{ core_extra.cancel_date }}</td>
+                </tr>
+                <tr>
+                    <th>是否历史变更记录</th>
+                    <td>{{ core_extra.is_history }}</td>
+                    <th>当前综合风险评级</th>
+                    <td>
+                        <strong class="me-2">{{ ent.score_total }} 分</strong>
+                        {% if ent.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
+                        {% elif ent.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
+                        {% else %}<span class="badge badge-high">高风险</span>{% endif %}
+                    </td>
+                </tr>
+
+                <!-- 分区 3：属地管辖、登记机关与地理空间位置 -->
+                <tr>
+                    <td colspan="4" class="section-bar">三、属地管辖、登记机关与地理空间位置</td>
+                </tr>
+                <tr>
                     <th>所属行政区划</th>
                     <td>{{ region_display }}</td>
+                    <th>主管市场监督管理机关</th>
+                    <td>{{ ent.reg_agency|default:"未登记" }}</td>
                 </tr>
                 <tr>
-                    <th>主管登记机关</th>
-                    <td colspan="3">{{ ent.reg_agency|default:"-" }}</td>
+                    <th>地理经度（百度坐标系）</th>
+                    <td class="font-monospace">{{ core_extra.bd_lng }}</td>
+                    <th>地理纬度（百度坐标系）</th>
+                    <td class="font-monospace">{{ core_extra.bd_lat }}</td>
                 </tr>
-                <!-- 动态渲染清洗后的高价值工商扩展字段（自动剔除坐标与内部ID） -->
-                {% for row in extra_rows %}
+                <tr>
+                    <th>地理经度（高德坐标系）</th>
+                    <td class="font-monospace">{{ core_extra.gd_lng }}</td>
+                    <th>地理纬度（高德坐标系）</th>
+                    <td class="font-monospace">{{ core_extra.gd_lat }}</td>
+                </tr>
+
+                <!-- 分区 4：扩展业务档案与核准经营范围 -->
+                <tr>
+                    <td colspan="4" class="section-bar">四、扩展业务档案与核准经营范围</td>
+                </tr>
+                {% for row in remaining_rows %}
                 <tr>
                     <th>{{ row.0.label }}</th>
                     <td>{{ row.0.value }}</td>
@@ -80,17 +181,17 @@
                 {% endfor %}
                 <tr>
                     <th>核准经营范围</th>
-                    <td colspan="3" class="lh-base">{{ ent.business_scope|default:"-" }}</td>
+                    <td colspan="3" class="lh-lg">{{ ent.business_scope|default:"未登记具体经营范围" }}</td>
                 </tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- 第二部分：风险评估基线与沙箱模拟器（What-If Analysis） -->
+<!-- 第二部分：风险评估明细与沙箱模拟器（What-If Analysis） -->
 <div class="bubble-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h6 class="fw-bold m-0">🧪 四维风险评估明细与沙箱推演（What-If）</h6>
+        <h6 class="fw-bold m-0">🧪 四维风险评估指标全览与沙箱推演（What-If）</h6>
         <div class="d-flex gap-2 flex-wrap">
             <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="applyPreset('clear_zhi')">✨ 模拟结清被执行</button>
             <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="applyPreset('half_all')">📉 涉诉指标减半</button>
@@ -107,17 +208,17 @@
                     <table class="table table-sm table-bordered align-middle small mb-3">
                         <thead class="table-light text-center">
                             <tr>
-                                <th class="text-start">评估维度与指标项</th>
-                                <th>近 1 年</th>
-                                <th>近 2 年</th>
-                                <th>近 3 年</th>
+                                <th class="text-start">评估维度与底层考核指标</th>
+                                <th>近 1 年 (权重55%)</th>
+                                <th>近 2 年 (权重30%)</th>
+                                <th>近 3 年 (权重15%)</th>
                                 <th>基线得分</th>
                                 <th>沙箱得分</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="fw-semibold">💰 财务维度（被裁判次数）</td>
+                                <td class="fw-semibold">💰 财务维度（被裁判文书次数）</td>
                                 <td><input type="number" min="0" max="999" name="cai_1" data-base="{{ ind.cai_1|default:0 }}" value="{{ ind.cai_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="cai_2" data-base="{{ ind.cai_2|default:0 }}" value="{{ ind.cai_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="cai_3" data-base="{{ ind.cai_3|default:0 }}" value="{{ ind.cai_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
@@ -125,7 +226,7 @@
                                 <td class="text-center fw-bold text-primary" id="simFin">{{ ind.score_fin|default:25.0 }}</td>
                             </tr>
                             <tr>
-                                <td class="fw-semibold">🏢 经营维度（涉案立案数）</td>
+                                <td class="fw-semibold">🏢 经营维度（涉案立案次数）</td>
                                 <td><input type="number" min="0" max="999" name="s_an_1" data-base="{{ ind.s_an_1|default:0 }}" value="{{ ind.s_an_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="s_an_2" data-base="{{ ind.s_an_2|default:0 }}" value="{{ ind.s_an_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="s_an_3" data-base="{{ ind.s_an_3|default:0 }}" value="{{ ind.s_an_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
@@ -133,7 +234,7 @@
                                 <td class="text-center fw-bold text-primary" id="simOpe">{{ ind.score_ope|default:25.0 }}</td>
                             </tr>
                             <tr>
-                                <td class="fw-semibold">⚖️ 合规维度（被立案次数）</td>
+                                <td class="fw-semibold">⚖️ 合规维度（作为被告被立案）</td>
                                 <td><input type="number" min="0" max="999" name="li_an_1" data-base="{{ ind.li_an_1|default:0 }}" value="{{ ind.li_an_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="li_an_2" data-base="{{ ind.li_an_2|default:0 }}" value="{{ ind.li_an_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="li_an_3" data-base="{{ ind.li_an_3|default:0 }}" value="{{ ind.li_an_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
@@ -141,7 +242,7 @@
                                 <td class="text-center fw-bold text-primary" id="simCom">{{ ind.score_com|default:25.0 }}</td>
                             </tr>
                             <tr>
-                                <td class="fw-semibold">🔨 质量维度（被执行次数）</td>
+                                <td class="fw-semibold">🔨 质量维度（被法院强制执行）</td>
                                 <td><input type="number" min="0" max="999" name="zhi_1" data-base="{{ ind.zhi_1|default:0 }}" value="{{ ind.zhi_1|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="zhi_2" data-base="{{ ind.zhi_2|default:0 }}" value="{{ ind.zhi_2|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
                                 <td><input type="number" min="0" max="999" name="zhi_3" data-base="{{ ind.zhi_3|default:0 }}" value="{{ ind.zhi_3|default:0 }}" class="form-control form-control-sm text-center sim-input"></td>
@@ -205,7 +306,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- 原 extra_js 脚本保持不变 -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
 const baseScores = {{ base_scores_json|safe }};
@@ -281,12 +381,12 @@ function applyPreset(mode) {
     });
     runSandboxCalc();
 }
+
 function sendSandboxToCopilot() {
     const simScore = document.getElementById('simScoreText').innerText;
     const simLvl = document.getElementById('simLevelBadge').innerText.trim();
     const diffText = document.getElementById('simDiffBadge').innerText.trim();
 
-    // 1. 自动比对用户在沙箱中具体修改了哪几项指标
     const labelMap = {
         cai_1: '近1年被裁判', cai_2: '近2年被裁判', cai_3: '近3年被裁判',
         s_an_1: '近1年涉案立案', s_an_2: '近2年涉案立案', s_an_3: '近3年涉案立案',
@@ -309,7 +409,6 @@ function sendSandboxToCopilot() {
         return;
     }
 
-    // 2. 将沙箱实时推演状态挂载到全局，供侧边栏请求时一并传给后端
     window.currentSandboxCtx = {
         base_score: {{ ent.score_total }},
         base_level: "{{ ent.get_risk_level_display }}",

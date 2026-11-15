@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}企业数据可视化 - 企业风险评估系统{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
         <h5 class="fw-bold m-0">企业分布数据可视化</h5>
+        <span class="badge bg-primary-subtle text-primary rounded-pill">👆 点击任意扇区、气泡或条形可下钻查看对应企业</span>
     </div>
     <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden">
         <a href="{% url 'dashboard:chart_enterprise' %}" class="btn btn-primary active px-3">企业分布气泡</a>
@@ -24,7 +25,7 @@
         </a>
     </div>
     <div class="col-md-3">
-        <a href="/enterprise/list/?status=1" class="bubble-card bubble-orb orb-low d-flex">
+        <a href="{% url 'enterprise:list' %}?status=1" class="bubble-card bubble-orb orb-low d-flex">
             <div>
                 <div class="text-muted small">在营存续</div>
                 <div class="fs-4 fw-bold" style="color:#1E7B45;">{{ open_cnt }} <span class="fs-6 fw-normal">家</span></div>
@@ -33,7 +34,7 @@
         </a>
     </div>
     <div class="col-md-3">
-        <a href="/enterprise/list/?status=2" class="bubble-card bubble-orb orb-mid d-flex">
+        <a href="{% url 'enterprise:list' %}?status=2" class="bubble-card bubble-orb orb-mid d-flex">
             <div>
                 <div class="text-muted small">已注销企业</div>
                 <div class="fs-4 fw-bold" style="color:#B7791F;">{{ cancel_cnt }} <span class="fs-6 fw-normal">家</span></div>
@@ -42,7 +43,7 @@
         </a>
     </div>
     <div class="col-md-3">
-        <a href="/enterprise/list/?status=3" class="bubble-card bubble-orb orb-high d-flex">
+        <a href="{% url 'enterprise:list' %}?status=3" class="bubble-card bubble-orb orb-high d-flex">
             <div>
                 <div class="text-muted small">吊销高危</div>
                 <div class="fs-4 fw-bold" style="color:#C0392B;">{{ revoke_cnt }} <span class="fs-6 fw-normal">家</span></div>
@@ -61,7 +62,7 @@
                     <h6 class="fw-bold small m-0">🫧 经营状态环形气泡构成</h6>
                     <span class="badge bg-primary-subtle text-primary rounded-pill">点击扇区下钻</span>
                 </div>
-                <div id="chartStatus" style="height: 320px;"></div>
+                <div id="chartStatus" style="height: 320px; cursor: pointer;"></div>
             </div>
         </div>
         <div class="col-md-7">
@@ -73,16 +74,16 @@
                         <button type="button" class="btn btn-outline-primary btn-sm py-0" id="btnBarMode" onclick="switchTypeChart('bar')">圆角柱图</button>
                     </div>
                 </div>
-                <div id="chartType" style="height: 320px;"></div>
+                <div id="chartType" style="height: 320px; cursor: pointer;"></div>
             </div>
         </div>
         <div class="col-md-12">
             <div class="bubble-card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="fw-bold small m-0">🫧 登记机关管辖集中度 TOP 10 胶囊条形图</h6>
-                    <span class="text-muted small">悬停查看管辖户数</span>
+                    <span class="badge bg-success-subtle text-success rounded-pill">点击条形下钻</span>
                 </div>
-                <div id="chartAgency" style="height: 300px;"></div>
+                <div id="chartAgency" style="height: 300px; cursor: pointer;"></div>
             </div>
         </div>
     </div>
@@ -92,15 +93,21 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
+const listBaseUrl = "{% url 'enterprise:list' %}";
 const statusData = {{ status_json|safe }};
 const typeNames = {{ type_names_json|safe }};
 const typeVals = {{ type_vals_json|safe }};
 const typeBubbles = {{ type_bubbles_json|safe }};
+const agencyNames = {{ agency_names_json|safe }};
+const agencyVals = {{ agency_vals_json|safe }};
 
-// 1. 经营状态环形图
+// 1. 经营状态环形图（点击扇区 -> ?status=1/2/3）
 const c1 = echarts.init(document.getElementById('chartStatus'));
 c1.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c} 家 ({d}%)' },
+    tooltip: {
+        trigger: 'item',
+        formatter: p => `<strong>${p.name}</strong>：${p.value} 家 (${p.percent}%)<br/><span style="color:#2563eb;font-size:12px;">👆 点击查看全部${p.name}企业</span>`
+    },
     legend: { bottom: 0, icon: 'circle' },
     series: [{
         type: 'pie', radius: ['48%', '74%'],
@@ -108,17 +115,24 @@ c1.setOption({
         data: statusData
     }]
 });
-c1.on('click', p => { if (p.data.code) window.location.href = `/enterprise/list/?status=${p.data.code}`; });
+c1.on('click', p => {
+    const statusMap = { '在营': '1', '在营存续': '1', '注销': '2', '已注销': '2', '吊销': '3', '已吊销': '3' };
+    const code = (p.data && p.data.code) || statusMap[p.name] || '';
+    if (code) window.location.href = `${listBaseUrl}?status=${encodeURIComponent(code)}`;
+});
 
-// 2. 企业类型 TOP10（默认悬浮气泡矩阵，支持切换圆角柱状图）
+// 2. 企业类型 TOP10（气泡模式与柱图模式均支持点击跳转 -> ?firm_type=xxx）
 const c2 = echarts.init(document.getElementById('chartType'));
+let currentTypeMode = 'bubble';
+
 function switchTypeChart(mode) {
+    currentTypeMode = mode;
     document.getElementById('btnBubbleMode').classList.toggle('active', mode === 'bubble');
     document.getElementById('btnBarMode').classList.toggle('active', mode === 'bar');
     if (mode === 'bubble') {
         c2.setOption({
             tooltip: {
-                formatter: p => `<strong>${p.data[3]}</strong><br/>企业数量：${p.data[1]} 家<br/>平均风险得分：${p.data[0]} 分`
+                formatter: p => `<strong>${p.data[3]}</strong><br/>企业数量：${p.data[1]} 家<br/>平均风险得分：${p.data[0]} 分<br/><span style="color:#2563eb;font-size:12px;">👆 点击查看该类型企业列表</span>`
             },
             grid: { left: 55, right: 30, top: 25, bottom: 40 },
             xAxis: { name: '平均得分', min: value => Math.max(0, Math.floor(value.min - 2)), splitLine: { lineStyle: { type: 'dashed' } } },
@@ -139,7 +153,14 @@ function switchTypeChart(mode) {
         }, true);
     } else {
         c2.setOption({
-            tooltip: { trigger: 'axis' },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                formatter: params => {
+                    const p = params[0];
+                    return `<strong>${p.name}</strong><br/>企业数量：${p.value} 家<br/><span style="color:#2563eb;font-size:12px;">👆 点击查看该类型企业列表</span>`;
+                }
+            },
             grid: { bottom: 60, left: 50, right: 20, top: 20 },
             xAxis: { type: 'category', data: typeNames, axisLabel: { rotate: 22, fontSize: 11 } },
             yAxis: { type: 'value' },
@@ -152,15 +173,40 @@ function switchTypeChart(mode) {
 }
 switchTypeChart('bubble');
 
-// 3. 登记机关胶囊条形图
+c2.on('click', params => {
+    const tName = Array.isArray(params.data) ? params.data[3] : (params.name || typeNames[params.dataIndex]);
+    if (tName) {
+        window.location.href = `${listBaseUrl}?firm_type=${encodeURIComponent(tName)}`;
+    }
+});
+// 柱状图模式下点击阴影区域同样跳转
+c2.getZr().on('click', event => {
+    if (currentTypeMode !== 'bar') return;
+    const pt = [event.offsetX, event.offsetY];
+    if (c2.containPixel('grid', pt)) {
+        const xIdx = c2.convertFromPixel({ seriesIndex: 0 }, pt)[0];
+        if (typeNames[xIdx]) {
+            window.location.href = `${listBaseUrl}?firm_type=${encodeURIComponent(typeNames[xIdx])}`;
+        }
+    }
+});
+
+// 3. 登记机关胶囊条形图（点击条形或行阴影 -> ?agency=xxx）
 const c3 = echarts.init(document.getElementById('chartAgency'));
 c3.setOption({
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+            const p = params[0];
+            return `<strong>${p.name}</strong><br/>管辖企业：${p.value} 家<br/><span style="color:#059669;font-size:12px;">👆 点击查看该机关管辖企业</span>`;
+        }
+    },
     grid: { left: 180, right: 40, top: 10, bottom: 25 },
     xAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
-    yAxis: { type: 'category', data: {{ agency_names_json|safe }} },
+    yAxis: { type: 'category', data: agencyNames },
     series: [{
-        type: 'bar', barWidth: 14, data: {{ agency_vals_json|safe }},
+        type: 'bar', barWidth: 14, data: agencyVals,
         itemStyle: {
             borderRadius: 999,
             color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
@@ -170,6 +216,22 @@ c3.setOption({
         }
     }]
 });
+c3.on('click', params => {
+    const agName = params.name || agencyNames[params.dataIndex];
+    if (agName) {
+        window.location.href = `${listBaseUrl}?agency=${encodeURIComponent(agName)}`;
+    }
+});
+c3.getZr().on('click', event => {
+    const pt = [event.offsetX, event.offsetY];
+    if (c3.containPixel('grid', pt)) {
+        const yIdx = c3.convertFromPixel({ seriesIndex: 0 }, pt)[1];
+        if (agencyNames[yIdx]) {
+            window.location.href = `${listBaseUrl}?agency=${encodeURIComponent(agencyNames[yIdx])}`;
+        }
+    }
+});
+
 window.addEventListener('resize', () => { c1.resize(); c2.resize(); c3.resize(); });
 </script>
 {% endblock %}

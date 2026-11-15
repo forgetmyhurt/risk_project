@@ -193,6 +193,69 @@
             padding: 10px 14px;
             background-color: #ffffff;
         }
+        /* 宽表横向滚动容器与自定义底部滚动条 */
+        .table-scroll-x {
+            overflow-x: auto;
+            overflow-y: hidden;
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            scroll-behavior: smooth;
+        }
+        .table-scroll-x::-webkit-scrollbar {
+            height: 10px;
+        }
+        .table-scroll-x::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+        .table-scroll-x::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 6px;
+        }
+        .table-scroll-x::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .wide-data-table {
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+        .wide-data-table th {
+            background-color: #f8fafc !important;
+            color: #334155;
+            font-weight: 600;
+            padding: 11px 14px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .wide-data-table td {
+            padding: 10px 14px;
+            vertical-align: middle;
+        }
+        /* 左右滑动时固定第一列（企业名称）与最后一列（操作） */
+        .wide-data-table th.sticky-col-left,
+        .wide-data-table td.sticky-col-left {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background-color: #ffffff;
+            box-shadow: 3px 0 6px -2px rgba(15, 23, 42, 0.08);
+        }
+        .wide-data-table th.sticky-col-left {
+            background-color: #f8fafc !important;
+            z-index: 3;
+        }
+        .wide-data-table th.sticky-col-right,
+        .wide-data-table td.sticky-col-right {
+            position: sticky;
+            right: 0;
+            z-index: 2;
+            background-color: #ffffff;
+            box-shadow: -3px 0 6px -2px rgba(15, 23, 42, 0.08);
+        }
+        .wide-data-table th.sticky-col-right {
+            background-color: #f8fafc !important;
+            z-index: 3;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -674,6 +737,21 @@
             </div>
         `;
     }
+    // 支持在宽表格 (.table-scroll-x) 上直接使用鼠标滚轮左右滑动查看全量字段
+    document.querySelectorAll('.table-scroll-x').forEach(container => {
+        container.addEventListener('wheel', function(e) {
+            if (container.scrollWidth <= container.clientWidth) return;
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                const maxScroll = container.scrollWidth - container.clientWidth;
+                const atLeft = container.scrollLeft <= 0 && e.deltaY < 0;
+                const atRight = container.scrollLeft >= maxScroll - 1 && e.deltaY > 0;
+                if (!atLeft && !atRight) {
+                    e.preventDefault();
+                    container.scrollLeft += e.deltaY * 1.2;
+                }
+            }
+        }, { passive: false });
+    });
     </script>
     {% block extra_js %}{% endblock %}
 </body>

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from datetime import datetime
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -6,12 +7,13 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 from apps.accounts.decorators import login_required_custom
+from apps.accounts.models import UserActivityLog, log_activity
 from apps.enterprise.models import Enterprise
 from apps.risk.models import RiskIndicator
+from services.archive_cleaner import extract_clean_archive_rows, format_region_display
 from services.report_build import build_report_context, generate_report_pdf
 from services.risk_calc import calc_risk_score
-from apps.accounts.models import UserActivityLog, log_activity
-from services.archive_cleaner import extract_clean_archive_rows, format_region_display
+
 
 @login_required_custom
 def risk_list(request):
@@ -38,16 +40,18 @@ def risk_list(request):
         "order": order,
     })
 
+
 @login_required_custom
 def risk_detail(request, pk: int):
-    """风险详情页：展示 12 项原始指标與四维度得分"""
+    """风险详情页：展示 12 项原始指标与四维度得分"""
     ind = get_object_or_404(RiskIndicator.objects.select_related("enterprise"), pk=pk)
     return render(request, "risk_detail.html", {"ind": ind, "ent": ind.enterprise})
+
 
 @require_http_methods(["POST"])
 @login_required_custom
 def score_calc(request, pk: int):
-    """FR-03-01: 发起评分计算（按企业+批次幂等更新，同步刷新企业表）"""
+    """FR-03-01: 发起评分计算（按企业+批次幂等更新，自动过滤非实表字段）"""
     ent = get_object_or_404(Enterprise, pk=pk)
     latest = ent.indicators.order_by("-scored_at", "-id").first()
     raw_metrics = {
@@ -60,12 +64,16 @@ def score_calc(request, pk: int):
     now = datetime.now()
     batch_no = latest.batch_no if latest else now.strftime("%Y%m%d-01")
 
+    # 仅保留 RiskIndicator 表中真实存在的数据库字段，避免 num_fin 等计算中间量引发异常
+    concrete_fields = {f.name for f in RiskIndicator._meta.concrete_fields}
+    clean_res = {k: v for k, v in res.items() if k in concrete_fields}
+
     with transaction.atomic():
         ind, _ = RiskIndicator.objects.update_or_create(
             enterprise=ent,
             batch_no=batch_no,
             defaults={
-                **res,
+                **clean_res,
                 "name": ent.firm_name,
                 "usc_code": ent.usc_code or "",
                 "ope_status": ent.ope_status,
@@ -89,27 +97,30 @@ def score_calc(request, pk: int):
                 "score_qua": float(ind.score_qua),
                 "total_score": float(ind.total_risk_score),
                 "risk_level": ind.risk_level,
-                "algo_version": ind.algo_version,
+                "algo_version": getattr(ind, "algo_version", "v2.0"),
             }
         })
     log_activity(request, UserActivityLog.ActionType.SCORE,
                  f"发起风险重算：{ent.firm_name}（得分 {ind.total_risk_score}）")
     return redirect("risk:report", pk=ind.id)
 
+
 @login_required_custom
 def risk_report(request, pk: int):
+    """网页端风险评估尽调报告（同步挂载四维扣分属性与清洗后的工商宽表行）"""
     ind = get_object_or_404(RiskIndicator.objects.select_related("enterprise"), pk=pk)
-    ent = ind.enterprise
+    ctx = build_report_context(ind)
     return render(request, "report.html", {
         "ind": ind,
-        "ent": ent,
-        "region_display": format_region_display(ent.province, ent.city, ent.district),
-        "extra_rows": extract_clean_archive_rows(ent),
+        "ent": ctx["ent"],
+        "region_display": ctx["region_display"],
+        "extra_rows": ctx["extra_rows"],
     })
+
 
 @login_required_custom
 def report_pdf(request, pk: int):
-    """FR-03-04: 导出 PDF 风险报告"""
+    """FR-03-04: 导出表格化 PDF 风险报告"""
     ind = get_object_or_404(RiskIndicator.objects.select_related("enterprise"), pk=pk)
 
     try:
@@ -123,7 +134,7 @@ def report_pdf(request, pk: int):
 
     return response
 
-# 在 apps/risk/views.py 末尾追加以下代码
+
 @require_http_methods(["POST"])
 @login_required_custom
 def sandbox_calc_api(request, pk: int):
@@ -139,7 +150,6 @@ def sandbox_calc_api(request, pk: int):
     )
     sim_input = {k: request.POST.get(k, 0) for k in metric_keys}
 
-    # 读取后台配置的动态阈值（默认 80 / 50）
     from apps.manager.views import SYS_CONFIG
     low_th = float(SYS_CONFIG.get("threshold_low", 80.0))
     mid_th = float(SYS_CONFIG.get("threshold_mid", 50.0))

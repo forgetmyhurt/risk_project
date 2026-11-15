@@ -9,31 +9,92 @@
 </div>
 
 <div class="card border-0 shadow-sm p-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <h6 class="fw-bold m-0">重点关注企业 TOP 10（按综合得分升序）</h6>
-        <a href="{% url 'enterprise:list' %}" class="btn btn-sm btn-outline-primary">查看全部企业</a>
+        <div class="d-flex align-items-center gap-3">
+            <span class="small text-muted">💡 鼠标置于表格内滚动滚轮（或拖动底部滚动条）可左右滑动查看全部 18 项字段</span>
+            <a href="{% url 'enterprise:list' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">查看全部企业</a>
+        </div>
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr><th>企业名称</th><th>统一社会信用代码</th><th>法定代表人</th><th>经营状态</th><th>综合得分</th><th>风险等级</th><th>操作</th></tr>
+
+    <div class="table-scroll-x">
+        <table class="table table-hover wide-data-table small">
+            <thead>
+                <tr>
+                    <th class="sticky-col-left">企业名称</th>
+                    <th>风险等级</th>
+                    <th>综合得分</th>
+                    <th>财务得分</th>
+                    <th>经营得分</th>
+                    <th>合规得分</th>
+                    <th>质量得分</th>
+                    <th>近三年涉诉/执行</th>
+                    <th>经营状态</th>
+                    <th>法定代表人</th>
+                    <th>注册资本</th>
+                    <th>所属地区</th>
+                    <th>国民经济行业</th>
+                    <th>企业类型</th>
+                    <th>成立日期</th>
+                    <th>统一社会信用代码</th>
+                    <th>工商注册号</th>
+                    <th>主管登记机关</th>
+                    <th class="sticky-col-right text-center">操作</th>
+                </tr>
             </thead>
             <tbody>
-            {% for e in top_risks %}
+                {% for ent in top_risks %}
                 <tr>
-                    <td class="fw-semibold">{{ e.firm_name }}</td>
-                    <td>{{ e.usc_code|default:"-" }}</td>
-                    <td>{{ e.legal_rep|default:"-" }}</td>
-                    <td>{{ e.get_ope_status_display }}</td>
-                    <td>{{ e.score_total }}</td>
+                    <td class="sticky-col-left fw-bold">
+                        <a href="{% url 'enterprise:detail' ent.id %}" class="text-dark text-decoration-none">
+                            {{ ent.firm_name }}
+                        </a>
+                    </td>
                     <td>
-                        {% if e.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
-                        {% elif e.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
+                        {% if ent.risk_level == 'L' %}<span class="badge badge-low">低风险</span>
+                        {% elif ent.risk_level == 'M' %}<span class="badge badge-mid">中风险</span>
                         {% else %}<span class="badge badge-high">高风险</span>{% endif %}
                     </td>
-                    <td><a href="{% url 'enterprise:detail' e.id %}" class="btn btn-sm btn-link text-decoration-none">详情</a></td>
+                    <td class="fw-bold {% if ent.risk_level == 'H' %}text-danger{% elif ent.risk_level == 'M' %}text-warning{% else %}text-success{% endif %}">
+                        {{ ent.score_total }}
+                    </td>
+                    <td class="text-secondary">{{ ent.score_fin|default:"25.00" }}</td>
+                    <td class="text-secondary">{{ ent.score_ope|default:"25.00" }}</td>
+                    <td class="text-secondary">{{ ent.score_com|default:"25.00" }}</td>
+                    <td class="text-secondary">{{ ent.score_qua|default:"25.00" }}</td>
+                    <td>
+                        {% if ent.total_events > 0 %}
+                            <span class="text-danger fw-semibold">累计 {{ ent.total_events }} 次</span>
+                            <span class="text-muted" style="font-size:11px;">(执行 {{ ent.zhi_sum }} 次)</span>
+                        {% else %}
+                            <span class="text-success">无涉诉记录</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if ent.ope_status == '1' %}<span class="text-success fw-semibold">在营</span>
+                        {% elif ent.ope_status == '2' %}<span class="text-secondary">注销</span>
+                        {% else %}<span class="text-danger fw-semibold">{{ ent.get_ope_status_display }}</span>{% endif %}
+                    </td>
+                    <td>{{ ent.legal_rep|default:"-" }}</td>
+                    <td>{{ ent.reg_cap }} 万元</td>
+                    <td>{{ ent.region_cn|default:"重庆市" }}</td>
+                    <td>{{ ent.ind_econ_name|default:"综合行业" }}</td>
+                    <td>{{ ent.firm_type|default:"-" }}</td>
+                    <td>{{ ent.est_date|date:"Y-m-d"|default:"-" }}</td>
+                    <td class="font-monospace">{{ ent.usc_code|default:"-" }}</td>
+                    <td class="font-monospace text-muted">{{ ent.reg_no_val|default:"-" }}</td>
+                    <td class="text-muted">{{ ent.reg_agency|default:"-" }}</td>
+                    <td class="sticky-col-right text-center">
+                        <a href="{% url 'enterprise:detail' ent.id %}" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill">详情</a>
+                        <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill ms-1"
+                                onclick="openCopilotForEnterprise('{{ ent.id }}', '{{ ent.firm_name }}')">AI诊断</button>
+                    </td>
                 </tr>
-            {% endfor %}
+                {% empty %}
+                <tr>
+                    <td colspan="19" class="text-center text-muted py-4">暂无符合条件的企业数据</td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
